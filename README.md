@@ -16,6 +16,31 @@ El sistema está diseñado para ejecutarse íntegramente en el lado del cliente 
 2. **Cálculo Estequiométrico por Valencias:** El algoritmo previene la generación de moléculas irreales evaluando estrictamente los electrones libres (valencias) de los precursores monoméricos y respetando la regla del octeto para la formación de macromoléculas.
 3. **Poda Dinámica de Diseño (DSP):** Descarte algorítmico temprano de combinaciones termodinámicamente incompatibles o estéricamente inviables.
 
+## 📦 Dependencias necesarias
+Este proyecto requiere estas dependencias para funcionar correctamente en desarrollo:
+
+* **next** `^16.2.10`
+* **react** `^19.2.7`
+* **react-dom** `^19.2.7`
+* **lucide-react** `^1.25.0`
+* **typescript** `^7.0.2`
+* **@types/react** `^19.2.17`
+* **@types/react-dom** `^19.2.3`
+* **@types/node** `^26.1.1`
+
+Si haces una instalación limpia, ejecuta:
+
+```bash
+npm install
+```
+
+Si necesitas reinstalar manualmente, usa:
+
+```bash
+npm install next react react-dom lucide-react
+npm install -D typescript @types/react @types/react-dom @types/node
+```
+
 ## 🛠️ Instalación y Uso Local
 Para desplegar este proyecto en un entorno de desarrollo local, ejecuta los siguientes comandos:
 
