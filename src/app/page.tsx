@@ -26,7 +26,7 @@ import {
 
 export default function App() {
   // Application states
-  const [materialType, setMaterialType] = useState<MaterialType>('Plásticos');
+  const [materialType, setMaterialType] = useState<MaterialType>('Polímeros');
   const [selectedElements, setSelectedElements] = useState<string[]>(['C', 'H']);
   const [selectedTags, setSelectedTags] = useState<string[]>(['cheap', 'flexible']);
   const [combinations, setCombinations] = useState<GeneratedMaterial[]>([]);

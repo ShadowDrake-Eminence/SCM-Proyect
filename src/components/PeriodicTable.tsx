@@ -135,7 +135,7 @@ export default function PeriodicTable({ selectedElements, onToggleElement }: Per
           </div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded border border-black/30 dark:border-white/30 inline-block" />
-            <span>Base para Plásticos (Orgánicos)</span>
+            <span>Base para Polímeros (Orgánicos)</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded border border-black/5 dark:border-white/5 inline-block opacity-60" />

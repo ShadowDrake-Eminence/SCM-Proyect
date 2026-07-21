@@ -12,9 +12,9 @@ export default function MaterialSelector({ selected, onChange }: MaterialSelecto
 
   const materials: Array<{ id: MaterialType; name: string; available: boolean }> = [
     { id: 'Metales', name: 'Metales', available: false },
-    { id: 'Plásticos', name: 'Plásticos', available: true },
+    { id: 'Polímeros', name: 'Polímeros', available: true },
     { id: 'Gases', name: 'Gases', available: false },
-    { id: 'Líquidos', name: 'Líquidos', available: false }
+    { id: 'Cerámicos', name: 'Cerámicos', available: false }
   ];
 
   const handleSelect = (id: MaterialType, available: boolean) => {
@@ -73,7 +73,7 @@ export default function MaterialSelector({ selected, onChange }: MaterialSelecto
           <div className="flex flex-col text-xs font-sans">
             <span className="font-semibold text-amber-600 dark:text-amber-400">Módulo en Desarrollo</span>
             <span className="text-slate-500 dark:text-slate-400 mt-0.5">
-              La sección de <strong>{showNotification}</strong> está marcada como <em>Próximamente</em>. En este prototipo interactivo puedes explorar el generador completo de <strong>Plásticos (Polímeros)</strong>.
+              La sección de <strong>{showNotification}</strong> está marcada como <em>Próximamente</em>. En este prototipo interactivo puedes explorar el generador completo de <strong>Polímeros</strong>.
             </span>
           </div>
         </div>

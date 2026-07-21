@@ -150,6 +150,16 @@ const FAMILIES = [
     applications: ['Sustitutos plásticos de cables de cobre', 'Disipadores de estática avanzados', 'Cátodos plásticos flexibles']
   }
 ];
+
+// 2. MOTOR MATEMÁTICO (Teorema de Handshaking y Restricción de Terminales)
+// Devuelve la valencia real de un elemento según la base de datos de ELEMENTS.
+// Si el símbolo no está catalogado, se asume valencia 1 (terminal) como caso más seguro.
+
+function getValency(sym: string): number {
+  const element = ELEMENTS.find(e => e.symbol === sym);
+  return element ? element.valency : 1;
+}
+
 // 2. MOTOR MATEMÁTICO (Teorema de Handshaking y Restricción de Terminales)
 function validarEstequiometria(subscripts: Record<string, number>): boolean {
   let sumValence = 0;
@@ -160,8 +170,7 @@ function validarEstequiometria(subscripts: Record<string, number>): boolean {
     const count = subscripts[sym];
     if (count === 0) continue;
 
-    const element = ELEMENTS.find(e => e.symbol === sym);
-    const valency = element ? element.valency : 0;
+    const valency = getValency(sym);
 
     sumValence += valency * count;
 
@@ -342,31 +351,50 @@ export function generateMaterialCombinations(selectedSymbols: string[], selected
     }
     description += `Esta formulación teórica es ideal para que el investigador profesional analice su viabilidad sintética y simulación de dinámica molecular de fase secundaria.`;
 
-    // Generate beautiful 2D network nodes/links matching the actual chemical elements in the candidate
+   // Generate a 2D network of nodes/links matching the actual chemical elements in the candidate.
+    // IMPORTANTE: el grafo respeta la valencia real de cada elemento (misma fuente que
+    // validarEstequiometria) para no dibujar átomos con más enlaces de los que pueden sostener
+    // — p.ej. un Hidrógeno (valencia 1) jamás puede aparecer "puenteando" dos átomos vecinos.
+    
     const nodes: Array<{ id: string; label: string; x: number; y: number; color: string; size: number }> = [];
     const links: Array<{ source: string; target: string; type: 'single' | 'double' }> = [];
 
-    // Lay out a beautiful molecular graph
+    const colorFor = (sym: string): string => {
+      if (sym === 'H') return '#b45309';
+      if (sym === 'O') return '#dc2626';
+      if (sym === 'N') return '#2563eb';
+      if (sym === 'F') return '#0284c7';
+      if (sym === 'Cl') return '#0d9488';
+      if (sym === 'Si') return '#059669';
+      if (sym === 'S') return '#ca8a04';
+      if (sym === 'B') return '#047857';
+      return '#27272a'; // Carbono / color por defecto
+    };
+
+    // Solo elementos con valencia >= 2 pueden formar parte de la cadena principal:
+    // necesitan al menos 2 sitios de enlace (uno al átomo anterior, otro al siguiente).
+    const backboneCapable = sortedSymbols.filter(s => getValency(s) >= 2);
+    const primary = backboneCapable.includes('C')
+      ? 'C'
+      : backboneCapable.includes('Si')
+        ? 'Si'
+        : (backboneCapable[0] || 'C'); // 'C' siempre está presente en uniqueSymbols
+    const secondary = backboneCapable.find(s => s !== primary) || primary;
+
+    // Elementos de valencia 1 (H, F, Cl...) u otros no usados en la cadena principal
+    // solo pueden colgar como sustituyentes de UN único átomo, nunca puentear dos.
+    const substituentPool = sortedSymbols.filter(s => s !== primary && s !== secondary);
+
     const sizeOfElements = sortedSymbols.length;
     const numBackbone = Math.max(4, sizeOfElements + 1);
-
-    // Primary backbone element (usually Carbon or Silicon)
-    const primary = sortedSymbols.includes('Si') && !sortedSymbols.includes('C') ? 'Si' : (sortedSymbols.includes('C') ? 'C' : sortedSymbols[0]);
-    // Secondary backbone element
-    const secondary = sortedSymbols.find(s => s !== primary) || primary;
+    let substituentCursor = 0;
 
     for (let i = 0; i < numBackbone; i++) {
       const sym = i % 2 === 0 ? primary : secondary;
-      
-      let color = '#27272a'; // Carbon
-      if (sym === 'H') color = '#b45309';
-      else if (sym === 'O') color = '#dc2626';
-      else if (sym === 'N') color = '#2563eb';
-      else if (sym === 'F') color = '#0284c7';
-      else if (sym === 'Cl') color = '#0d9488';
-      else if (sym === 'Si') color = '#059669';
-      else if (sym === 'S') color = '#ca8a04';
-      else if (sym === 'B') color = '#047857';
+      const valency = getValency(sym);
+      const isChainEnd = i === 0 || i === numBackbone - 1;
+      const chainBondsUsed = isChainEnd ? 1 : 2; // los extremos solo enlazan hacia un lado
+      let freeSlots = Math.max(0, valency - chainBondsUsed);
 
       const x = 60 + i * 80;
       const y = 110 + (i % 2 === 0 ? -12 : 12);
@@ -377,61 +405,45 @@ export function generateMaterialCombinations(selectedSymbols: string[], selected
         label: sym,
         x,
         y,
-        color,
+        color: colorFor(sym),
         size: sym === 'H' ? 12 : (sym === 'Si' ? 20 : 18)
       });
 
-      // Chain bond
+      // Enlace con el átomo anterior de la cadena
       if (i > 0) {
+        const prevSym = (i - 1) % 2 === 0 ? primary : secondary;
         links.push({
-          source: `${i % 2 === 1 ? primary : secondary}_b${i - 1}`,
+          source: `${prevSym}_b${i - 1}`,
           target: nodeId,
           type: (i === 1 && sortedSymbols.includes('O')) ? 'double' : 'single'
         });
       }
 
-      // Add 2 side attachments to each backbone atom
-      const remaining = sortedSymbols.filter(s => s !== primary && s !== secondary);
-      
-      // Top group
-      const topSym = remaining.length > 0 ? remaining[(i * 2) % remaining.length] : (sortedSymbols.includes('H') ? 'H' : sortedSymbols[0]);
-      let topColor = '#b45309';
-      if (topSym === 'O') topColor = '#dc2626';
-      else if (topSym === 'F') topColor = '#0284c7';
-      else if (topSym === 'Cl') topColor = '#0d9488';
-      else if (topSym === 'N') topColor = '#2563eb';
-      else if (topSym === 'H') topColor = '#b45309';
+      // Sustituyentes (máx. 2 posiciones dibujadas: arriba/abajo), solo si el átomo
+      // todavía tiene sitios de enlace libres según su valencia real.
+      const slots: Array<{ id: string; dy: number }> = [
+        { id: `top_${i}`, dy: -50 },
+        { id: `bottom_${i}`, dy: 50 }
+      ];
 
-      const topId = `top_${i}`;
-      nodes.push({
-        id: topId,
-        label: topSym,
-        x,
-        y: y - 50,
-        color: topColor,
-        size: topSym === 'H' ? 11 : 15
-      });
-      links.push({ source: nodeId, target: topId, type: 'single' });
+      for (const slot of slots) {
+        if (freeSlots <= 0) break;
+        const subSym = substituentPool.length > 0
+          ? substituentPool[substituentCursor % substituentPool.length]
+          : 'H';
+        substituentCursor++;
 
-      // Bottom group
-      const bottomSym = remaining.length > 0 ? remaining[(i * 2 + 1) % remaining.length] : (sortedSymbols.includes('H') ? 'H' : sortedSymbols[0]);
-      let bottomColor = '#b45309';
-      if (bottomSym === 'O') bottomColor = '#dc2626';
-      else if (bottomSym === 'F') bottomColor = '#0284c7';
-      else if (bottomSym === 'Cl') bottomColor = '#0d9488';
-      else if (bottomSym === 'N') bottomColor = '#2563eb';
-      else if (bottomSym === 'H') bottomColor = '#b45309';
-
-      const bottomId = `bottom_${i}`;
-      nodes.push({
-        id: bottomId,
-        label: bottomSym,
-        x,
-        y: y + 50,
-        color: bottomColor,
-        size: bottomSym === 'H' ? 11 : 15
-      });
-      links.push({ source: nodeId, target: bottomId, type: 'single' });
+        nodes.push({
+          id: slot.id,
+          label: subSym,
+          x,
+          y: y + slot.dy,
+          color: colorFor(subSym),
+          size: subSym === 'H' ? 11 : 15
+        });
+        links.push({ source: nodeId, target: slot.id, type: 'single' });
+        freeSlots--;
+      }
     }
 
     validCandidates.push({

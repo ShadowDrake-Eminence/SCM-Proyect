@@ -15,7 +15,7 @@ export interface PropertyTag {
   icon: string;
 }
 
-export type MaterialType = 'Plásticos' | 'Metales' | 'Gases' | 'Líquidos';
+export type MaterialType = 'Polímeros' | 'Metales' | 'Gases' | 'Cerámicos';
 
 export interface GeneratedMaterial {
   id: string;
