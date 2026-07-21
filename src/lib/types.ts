@@ -5,6 +5,7 @@ export interface ChemicalElement {
   mass: number;
   category: 'non-metal' | 'noble-gas' | 'alkali' | 'alkaline-earth' | 'metalloid' | 'halogen' | 'transition-metal' | 'post-transition-metal';
   color: string;
+  valency: number; // <-- NUEVO: Atributo crítico para el modelo matemático
 }
 
 export interface PropertyTag {
@@ -23,13 +24,13 @@ export interface GeneratedMaterial {
   formula: string;
   description: string;
   properties: {
-    costScore: number; // 1-100 (higher means cheaper for UI bar, but we can display as "$" to "$$$")
-    tensileStrength: number; // MPa
-    fireResistance: number; // 1-100 %
-    biodegradability: number; // 1-100 %
-    flexibility: number; // 1-100 %
-    transparency: number; // 1-100 %
-    thermalConductivity: number; // 1-100 %
+    costScore: number;
+    tensileStrength: number;
+    fireResistance: number;
+    biodegradability: number;
+    flexibility: number;
+    transparency: number;
+    thermalConductivity: number;
   };
   molecularStructure: {
     nodes: Array<{ id: string; label: string; x: number; y: number; color: string; size: number }>;
