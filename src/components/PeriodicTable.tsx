@@ -1,5 +1,5 @@
 import React from 'react';
-import { ELEMENTS, PLASTIC_ELEMENTS } from '../data';
+import { ELEMENTS, PLASTIC_ELEMENTS } from '../lib/data';
 
 interface PeriodicTableProps {
   selectedElements: string[];

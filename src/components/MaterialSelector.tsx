@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AlertCircle } from 'lucide-react';
-import { MaterialType } from '../types';
+import { MaterialType } from '../lib/types';
 
 interface MaterialSelectorProps {
   selected: MaterialType;

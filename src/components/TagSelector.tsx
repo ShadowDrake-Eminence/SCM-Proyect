@@ -1,5 +1,5 @@
 import React from 'react';
-import { PROPERTY_TAGS } from '../data';
+import { PROPERTY_TAGS } from '../lib/data';
 import { 
   DollarSign, 
   Flame, 
