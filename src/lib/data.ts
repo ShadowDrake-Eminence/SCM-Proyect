@@ -1,30 +1,16 @@
 import { ChemicalElement, PropertyTag, GeneratedMaterial } from './types';
 
-// Elements of the Periodic Table (focused on key elements for materials, representing a beautiful compact grid)
+// 1. BASE DE DATOS CURADA (Con Valencias Matemáticas inyectadas)
 export const ELEMENTS: ChemicalElement[] = [
-  // Row 1
-  { symbol: 'H', name: 'Hidrógeno', number: 1, mass: 1.008, category: 'non-metal', color: 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800' },
-  { symbol: 'He', name: 'Helio', number: 2, mass: 4.002, category: 'noble-gas', color: 'bg-rose-100 text-rose-900 border-rose-300 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800' },
-  
-  // Row 2
-  { symbol: 'Li', name: 'Litio', number: 3, mass: 6.94, category: 'alkali', color: 'bg-violet-100 text-violet-900 border-violet-300 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800' },
-  { symbol: 'Be', name: 'Berilio', number: 4, mass: 9.012, category: 'alkaline-earth', color: 'bg-purple-100 text-purple-900 border-purple-300 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800' },
-  { symbol: 'B', name: 'Boro', number: 5, mass: 10.81, category: 'metalloid', color: 'bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' },
-  { symbol: 'C', name: 'Carbono', number: 6, mass: 12.011, category: 'non-metal', color: 'bg-zinc-800 text-zinc-100 border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700' },
-  { symbol: 'N', name: 'Nitrógeno', number: 7, mass: 14.007, category: 'non-metal', color: 'bg-blue-100 text-blue-900 border-blue-300 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800' },
-  { symbol: 'O', name: 'Oxígeno', number: 8, mass: 15.999, category: 'non-metal', color: 'bg-sky-100 text-sky-900 border-sky-300 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800' },
-  { symbol: 'F', name: 'Flúor', number: 9, mass: 18.998, category: 'halogen', color: 'bg-teal-100 text-teal-900 border-teal-300 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800' },
-  { symbol: 'Ne', name: 'Neón', number: 10, mass: 20.180, category: 'noble-gas', color: 'bg-rose-100 text-rose-900 border-rose-300 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800' },
-
-  // Row 3
-  { symbol: 'Na', name: 'Sodio', number: 11, mass: 22.990, category: 'alkali', color: 'bg-violet-100 text-violet-900 border-violet-300 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800' },
-  { symbol: 'Mg', name: 'Magnesio', number: 12, mass: 24.305, category: 'alkaline-earth', color: 'bg-purple-100 text-purple-900 border-purple-300 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800' },
-  { symbol: 'Al', name: 'Aluminio', number: 13, mass: 26.982, category: 'post-transition-metal', color: 'bg-orange-100 text-orange-900 border-orange-300 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800' },
-  { symbol: 'Si', name: 'Silicio', number: 14, mass: 28.085, category: 'metalloid', color: 'bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' },
-  { symbol: 'P', name: 'Fósforo', number: 15, mass: 30.974, category: 'non-metal', color: 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800' },
-  { symbol: 'S', name: 'Azufre', number: 16, mass: 32.06, category: 'non-metal', color: 'bg-yellow-100 text-yellow-900 border-yellow-300 dark:bg-yellow-950/40 dark:text-yellow-300 dark:border-yellow-800' },
-  { symbol: 'Cl', name: 'Cloro', number: 17, mass: 35.45, category: 'halogen', color: 'bg-teal-100 text-teal-900 border-teal-300 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800' },
-  { symbol: 'Ar', name: 'Argón', number: 18, mass: 39.948, category: 'noble-gas', color: 'bg-rose-100 text-rose-900 border-rose-300 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800' }
+  { symbol: 'H', name: 'Hidrógeno', number: 1, mass: 1.008, category: 'non-metal', color: '#b45309', valency: 1 },
+  { symbol: 'C', name: 'Carbono', number: 6, mass: 12.011, category: 'non-metal', color: '#171717', valency: 4 },
+  { symbol: 'N', name: 'Nitrógeno', number: 7, mass: 14.007, category: 'non-metal', color: '#1e3a8a', valency: 3 },
+  { symbol: 'O', name: 'Oxígeno', number: 8, mass: 15.999, category: 'non-metal', color: '#7f1d1d', valency: 2 },
+  { symbol: 'F', name: 'Flúor', number: 9, mass: 18.998, category: 'halogen', color: '#064e3b', valency: 1 },
+  { symbol: 'Si', name: 'Silicio', number: 14, mass: 28.085, category: 'metalloid', color: '#059669', valency: 4 },
+  { symbol: 'P', name: 'Fósforo', number: 15, mass: 30.974, category: 'non-metal', color: '#ca8a04', valency: 3 },
+  { symbol: 'S', name: 'Azufre', number: 16, mass: 32.06, category: 'non-metal', color: '#a16207', valency: 2 },
+  { symbol: 'Cl', name: 'Cloro', number: 17, mass: 35.45, category: 'halogen', color: '#78350f', valency: 1 }
 ];
 
 // Highlight elements that are active / highly recommended for plastic creation
@@ -164,16 +150,61 @@ const FAMILIES = [
     applications: ['Sustitutos plásticos de cables de cobre', 'Disipadores de estática avanzados', 'Cátodos plásticos flexibles']
   }
 ];
+// 2. MOTOR MATEMÁTICO (Teorema de Handshaking y Restricción de Terminales)
+function validarEstequiometria(subscripts: Record<string, number>): boolean {
+  let sumValence = 0;
+  let terminals = 0;
+  let backboneSites = 0;
+
+  for (const sym in subscripts) {
+    const count = subscripts[sym];
+    if (count === 0) continue;
+
+    const element = ELEMENTS.find(e => e.symbol === sym);
+    const valency = element ? element.valency : 0;
+
+    sumValence += valency * count;
+
+    if (valency === 1) {
+      terminals += count; // Hidrógenos y Halógenos
+    } else {
+      backboneSites += (valency * count); // Carbono, Silicio, etc.
+    }
+  }
+
+  // REGLA 1: Teorema de Handshaking (La suma de valencias debe ser par)
+  if (sumValence % 2 !== 0) return false;
+
+  // REGLA 2: Estabilidad Espacial. Los terminales (H, Cl) no pueden exceder
+  // los sitios de enlace disponibles en la cadena principal (Backbone).
+  const backboneAtoms = Object.keys(subscripts).filter(sym => {
+    const el = ELEMENTS.find(e => e.symbol === sym);
+    return el && el.valency > 1 && subscripts[sym] > 0;
+  }).reduce((sum, sym) => sum + subscripts[sym], 0);
+
+  if (backboneAtoms > 0) {
+    // Sitios disponibles = Suma de valencias - (2 enlaces internos por cada átomo conectado)
+    const availableSites = backboneSites - 2 * (backboneAtoms - 1);
+    // Restamos 2 sitios para permitir que el polímero continúe la cadena infinitamente
+    const polymerSites = availableSites - 2; 
+    if (terminals > polymerSites) return false;
+  }
+
+  return true;
+}
+
 
 /**
- * Generates exactly 20 potential combinations (candidates) of elements matching the periodic selection and requested tags.
+ * el generador pa
  */
 export function generateMaterialCombinations(selectedSymbols: string[], selectedTagIds: string[]): GeneratedMaterial[] {
-  // Safe default symbols/tags if none are chosen
   const symbols = selectedSymbols.length > 0 ? selectedSymbols : ['C', 'H'];
   const tags = selectedTagIds.length > 0 ? selectedTagIds : ['cheap'];
 
-  return FAMILIES.map((fam, index) => {
+  // Array para almacenar solo los que superen la validación matemática
+  const validCandidates: GeneratedMaterial[] = [];
+
+  FAMILIES.forEach((fam, index) => {
     const id = `scm-candidate-${index + 1}`;
     
     // Mix selected elements with template
@@ -181,27 +212,38 @@ export function generateMaterialCombinations(selectedSymbols: string[], selected
     // plus optionally C and H to maintain realistic carbon chemistry if not chosen
     const uniqueSymbols = Array.from(new Set(['C', 'H', ...symbols]));
     
-    // Generate a unique systematic formula
-    // e.g. (C4 H6 O2 F1)n
-    // We will vary subscripts slightly for each of the 20 candidates
-    const subscripts: Record<string, number> = {
+    
+    // Configuración base de átomos
+    let subscripts: Record<string, number> = {
       C: (3 + (index % 5)),
       H: (4 + (index % 6)),
       O: (index % 4 === 0 ? 2 : (index % 3 === 0 ? 1 : 0)),
-      N: (index % 5 === 2 ? 1 : (index % 7 === 0 ? 2 : 0)),
-      F: (index % 6 === 1 ? 2 : (index % 8 === 0 ? 1 : 0)),
+      N: (index % 5 === 2 ? 1 : 0),
+      F: (index % 6 === 1 ? 2 : 0),
       Cl: (index % 7 === 3 ? 1 : 0),
       S: (index % 8 === 4 ? 1 : 0),
-      Si: (index % 9 === 1 ? 1 : (index % 10 === 0 ? 2 : 0)),
+      Si: (index % 9 === 1 ? 1 : 0),
       P: (index % 10 === 5 ? 1 : 0)
     };
 
-    // Ensure selected symbols are present with at least subscript 1 or more
+    // Aseguramos que los símbolos seleccionados por el usuario estén en la fórmula
     symbols.forEach(sym => {
       if (!subscripts[sym] || subscripts[sym] === 0) {
-        subscripts[sym] = 1 + (index % 3);
+        subscripts[sym] = 1;
       }
     });
+    // --- ALGORITMO DE BACKTRACKING (Ajuste de valencia) ---
+    // Si la molécula es inestable, ajustamos los Hidrógenos (+1 o -1) hasta estabilizarla
+    let attempts = 0;
+    let isValid = false;
+    
+    while (!isValid && attempts < 10) {
+      isValid = validarEstequiometria(subscripts);
+      if (!isValid) {
+        subscripts['H'] += 1; // Fuerza bruta controlada para estabilizar
+        attempts++;
+      }
+    }
 
     // Sort symbols: Carbon first, Hydrogen second, then others alphabetically
     const sortedSymbols = uniqueSymbols.filter(s => subscripts[s] > 0).sort((a, b) => {
@@ -211,7 +253,9 @@ export function generateMaterialCombinations(selectedSymbols: string[], selected
       if (b === 'H') return 1;
       return a.localeCompare(b);
     });
-
+    // DSP: Si después de 10 iteraciones no hay estabilidad química, podamos esta rama y saltamos
+    if (!isValid) return;
+    
     // Build sub-scripts formatted as sub-script characters
     let formulaParts = '';
     sortedSymbols.forEach(sym => {
@@ -390,7 +434,7 @@ export function generateMaterialCombinations(selectedSymbols: string[], selected
       links.push({ source: nodeId, target: bottomId, type: 'single' });
     }
 
-    return {
+    validCandidates.push({
       id,
       name: candidateName,
       scientificName,
@@ -408,12 +452,12 @@ export function generateMaterialCombinations(selectedSymbols: string[], selected
       },
       molecularStructure: { nodes, links },
       applications: fam.applications
-    };
+    });
   });
+  return validCandidates;
 }
 
 // Retain a compatibility function to avoid compilation breaks with existing code before we update it
 export function generateDynamicPolymer(selectedSymbols: string[], selectedTagIds: string[]): GeneratedMaterial {
   const list = generateMaterialCombinations(selectedSymbols, selectedTagIds);
-  return list[0];
-}
+  return list[0];}
