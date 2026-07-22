@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ScmLogo from '../components/ScmLogo';
 import MaterialSelector from '../components/MaterialSelector';
 import PeriodicTable from '../components/PeriodicTable';
@@ -39,12 +39,31 @@ export default function App() {
   const [notebook, setNotebook] = useState<Record<string, string>>({});
   const [activeNotes, setActiveNotes] = useState<string>('');
 
-  // Saved candidates for quick review (favorites)
+ // setTimeout 
+ // Saved candidates for quick review (favorites)
   const [savedCandidates, setSavedCandidates] = useState<Record<string, boolean>>({});
 
-  // Generate combinations initially and update when elements/tags selection changes
+  // Rastrea las fórmulas ya entregadas en esta sesión, para que "Explorar nuevas
+  // combinaciones" nunca repita una fórmula ya vista mientras la selección no cambie.
+  // Se reinicia automáticamente cuando el usuario cambia los elementos o las etiquetas.
+  const usedFormulasRef = useRef<Set<string>>(new Set());
+  const lastSelectionKeyRef = useRef<string>('');
+
+  const getSelectionKey = () =>
+    JSON.stringify([...selectedElements].sort()) + '|' + JSON.stringify([...selectedTags].sort());
+
+  const resetExplorationIfSelectionChanged = () => {
+    const key = getSelectionKey();
+    if (key !== lastSelectionKeyRef.current) {
+      usedFormulasRef.current = new Set();
+      lastSelectionKeyRef.current = key;
+    }
+  };
+
   useEffect(() => {
-    const list = generateMaterialCombinations(selectedElements, selectedTags);
+    resetExplorationIfSelectionChanged();
+    const list = generateMaterialCombinations(selectedElements, selectedTags, usedFormulasRef.current);
+    list.forEach(c => usedFormulasRef.current.add(c.formula));
     setCombinations(list);
     // Auto-select first candidate in the list
     if (list.length > 0) {
@@ -130,7 +149,9 @@ export default function App() {
 
     setTimeout(() => {
       clearInterval(interval);
-      const list = generateMaterialCombinations(selectedElements, selectedTags);
+      resetExplorationIfSelectionChanged();
+      const list = generateMaterialCombinations(selectedElements, selectedTags, usedFormulasRef.current);
+      list.forEach(c => usedFormulasRef.current.add(c.formula));
       setCombinations(list);
       setIsGenerating(false);
       if (list.length > 0) {

@@ -206,77 +206,116 @@ function validarEstequiometria(subscripts: Record<string, number>): boolean {
 /**
  * el generador pa
  */
-export function generateMaterialCombinations(selectedSymbols: string[], selectedTagIds: string[]): GeneratedMaterial[] {
+/**
+ * Generador principal de candidatos. A diferencia de una tabla fija de fórmulas,
+ * cada llamada explora aleatoriamente el espacio combinatorio real de fórmulas válidas
+ * (filtrado por validarEstequiometria) y evita repetir fórmulas ya entregadas en la
+ * sesión actual (excludeFormulas), para que "Explorar nuevas combinaciones" entregue
+ * resultados distintos cada vez que se presiona.
+ */
+export function generateMaterialCombinations(
+  selectedSymbols: string[],
+  selectedTagIds: string[],
+  excludeFormulas: Set<string> = new Set()
+): GeneratedMaterial[] {
   const symbols = selectedSymbols.length > 0 ? selectedSymbols : ['C', 'H'];
   const tags = selectedTagIds.length > 0 ? selectedTagIds : ['cheap'];
 
   // Array para almacenar solo los que superen la validación matemática
   const validCandidates: GeneratedMaterial[] = [];
 
-  FAMILIES.forEach((fam, index) => {
-    const id = `scm-candidate-${index + 1}`;
-    
-    // Mix selected elements with template
-    // We will ensure that the chemical formula contains ALL selected elements
-    // plus optionally C and H to maintain realistic carbon chemistry if not chosen
-    const uniqueSymbols = Array.from(new Set(['C', 'H', ...symbols]));
-    
-    
-    // Configuración base de átomos
-    let subscripts: Record<string, number> = {
-      C: (3 + (index % 5)),
-      H: (4 + (index % 6)),
-      O: (index % 4 === 0 ? 2 : (index % 3 === 0 ? 1 : 0)),
-      N: (index % 5 === 2 ? 1 : 0),
-      F: (index % 6 === 1 ? 2 : 0),
-      Cl: (index % 7 === 3 ? 1 : 0),
-      S: (index % 8 === 4 ? 1 : 0),
-      Si: (index % 9 === 1 ? 1 : 0),
-      P: (index % 10 === 5 ? 1 : 0)
+  // Genera un vector de subíndices aleatorio dentro de rangos razonables para una
+  // unidad repetitiva de polímero, garantizando que los símbolos elegidos por el
+  // usuario estén presentes.
+  const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+  const buildRandomSubscripts = (): Record<string, number> => {
+    const subscripts: Record<string, number> = {
+      C: randomInt(2, 12),
+      H: randomInt(2, 16),
+      O: Math.random() < 0.5 ? randomInt(1, 4) : 0,
+      N: Math.random() < 0.3 ? randomInt(1, 3) : 0,
+      F: Math.random() < 0.25 ? randomInt(1, 4) : 0,
+      Cl: Math.random() < 0.2 ? randomInt(1, 3) : 0,
+      S: Math.random() < 0.2 ? randomInt(1, 3) : 0,
+      Si: Math.random() < 0.2 ? randomInt(1, 3) : 0,
+      P: Math.random() < 0.15 ? randomInt(1, 3) : 0
     };
 
     // Aseguramos que los símbolos seleccionados por el usuario estén en la fórmula
     symbols.forEach(sym => {
       if (!subscripts[sym] || subscripts[sym] === 0) {
-        subscripts[sym] = 1;
+        subscripts[sym] = randomInt(1, 3);
       }
     });
-    // --- ALGORITMO DE BACKTRACKING (Ajuste de valencia) ---
-    // Si la molécula es inestable, ajustamos los Hidrógenos (+1 o -1) hasta estabilizarla
-    let attempts = 0;
+
+    return subscripts;
+  };
+
+  FAMILIES.forEach((fam, index) => {
+    const id = `scm-candidate-${index + 1}`;
+
+    // Mix selected elements with template
+    // We will ensure that the chemical formula contains ALL selected elements
+    // plus optionally C and H to maintain realistic carbon chemistry if not chosen
+    const uniqueSymbols = Array.from(new Set(['C', 'H', ...symbols]));
+
+    // --- EXPLORACIÓN ALEATORIA + BACKTRACKING + DEDUPLICACIÓN ---
+    // Probamos varios vectores de subíndices al azar (cada uno pasa por el ajuste
+    // de valencia existente) hasta encontrar uno válido que además no se haya
+    // mostrado ya en esta sesión. Si tras varios intentos no aparece ninguno nuevo,
+    // se descarta esta familia (poda DSP), igual que antes.
+    let subscripts: Record<string, number> = {};
     let isValid = false;
-    
-    while (!isValid && attempts < 10) {
-      isValid = validarEstequiometria(subscripts);
-      if (!isValid) {
-        subscripts['H'] += 1; // Fuerza bruta controlada para estabilizar
-        attempts++;
+    let formula = '';
+    let sortedSymbols: string[] = [];
+    const maxOuterAttempts = 15;
+
+    for (let outer = 0; outer < maxOuterAttempts; outer++) {
+      subscripts = buildRandomSubscripts();
+
+      // Ajuste de valencia: si la molécula es inestable, ajustamos los Hidrógenos hasta estabilizarla
+      let attempts = 0;
+      isValid = false;
+      while (!isValid && attempts < 10) {
+        isValid = validarEstequiometria(subscripts);
+        if (!isValid) {
+          subscripts['H'] += 1; // Fuerza bruta controlada para estabilizar
+          attempts++;
+        }
       }
+
+      if (!isValid) continue;
+
+      sortedSymbols = uniqueSymbols.filter(s => subscripts[s] > 0).sort((a, b) => {
+        if (a === 'C') return -1;
+        if (b === 'C') return 1;
+        if (a === 'H') return -1;
+        if (b === 'H') return 1;
+        return a.localeCompare(b);
+      });
+
+      let formulaParts = '';
+      sortedSymbols.forEach(sym => {
+        const count = subscripts[sym] || 1;
+        const sub = count > 1 ? String(count).split('').map(char => {
+          const idx = '0123456789'.indexOf(char);
+          return '₀₁₂₃₄₅₆₇₈₉'[idx];
+        }).join('') : '';
+        formulaParts += `${sym}${sub}`;
+      });
+      formula = `(${formulaParts})ₙ`;
+
+      if (!excludeFormulas.has(formula)) break; // encontramos una fórmula válida Y nueva
+      isValid = false; // era válida pero repetida: seguimos intentando
     }
 
-    // Sort symbols: Carbon first, Hydrogen second, then others alphabetically
-    const sortedSymbols = uniqueSymbols.filter(s => subscripts[s] > 0).sort((a, b) => {
-      if (a === 'C') return -1;
-      if (b === 'C') return 1;
-      if (a === 'H') return -1;
-      if (b === 'H') return 1;
-      return a.localeCompare(b);
-    });
-    // DSP: Si después de 10 iteraciones no hay estabilidad química, podamos esta rama y saltamos
+    // DSP: si no se encontró una fórmula válida y nueva tras varios intentos, podamos esta rama
     if (!isValid) return;
-    
-    // Build sub-scripts formatted as sub-script characters
-    let formulaParts = '';
-    sortedSymbols.forEach(sym => {
-      const count = subscripts[sym] || 1;
-      const sub = count > 1 ? String(count).split('').map(char => {
-        const idx = '0123456789'.indexOf(char);
-        return '₀₁₂₃₄₅₆₇₈₉'[idx];
-      }).join('') : '';
-      formulaParts += `${sym}${sub}`;
-    });
 
-    const formula = `(${formulaParts})ₙ`;
+    // Registramos la fórmula de inmediato para que ninguna otra familia de este mismo
+    // lote (ni de una futura llamada) pueda repetirla.
+    excludeFormulas.add(formula);
 
     // Dynamic systematic name
     const candidateName = `${fam.prefix}-${fam.middle} SCM-X${100 + index + 1}`;
