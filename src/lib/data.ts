@@ -395,7 +395,7 @@ export function generateMaterialCombinations(
     // validarEstequiometria) para no dibujar átomos con más enlaces de los que pueden sostener
     // — p.ej. un Hidrógeno (valencia 1) jamás puede aparecer "puenteando" dos átomos vecinos.
     
-    const nodes: Array<{ id: string; label: string; x: number; y: number; color: string; size: number }> = [];
+   const nodes: Array<{ id: string; label: string; x: number; y: number; color: string; size: number }> = [];
     const links: Array<{ source: string; target: string; type: 'single' | 'double' }> = [];
 
     const colorFor = (sym: string): string => {
@@ -407,22 +407,16 @@ export function generateMaterialCombinations(
       if (sym === 'Si') return '#059669';
       if (sym === 'S') return '#ca8a04';
       if (sym === 'B') return '#047857';
-      return '#27272a'; // Carbono / color por defecto
+      return '#27272a';
     };
 
-    // Solo elementos con valencia >= 2 pueden formar parte de la cadena principal:
-    // necesitan al menos 2 sitios de enlace (uno al átomo anterior, otro al siguiente).
     const backboneCapable = sortedSymbols.filter(s => getValency(s) >= 2);
-    const primary = backboneCapable.includes('C')
-      ? 'C'
-      : backboneCapable.includes('Si')
-        ? 'Si'
-        : (backboneCapable[0] || 'C'); // 'C' siempre está presente en uniqueSymbols
+    const primary = backboneCapable.includes('C') ? 'C' : (backboneCapable.includes('Si') ? 'Si' : (backboneCapable[0] || 'C'));
     const secondary = backboneCapable.find(s => s !== primary) || primary;
 
-    // Elementos de valencia 1 (H, F, Cl...) u otros no usados en la cadena principal
-    // solo pueden colgar como sustituyentes de UN único átomo, nunca puentear dos.
-    const substituentPool = sortedSymbols.filter(s => s !== primary && s !== secondary);
+    // CORRECCIÓN 1: Restringir estrictamente los sustituyentes a elementos monovalentes (Restricción de Nodos Terminales)
+    const substituentPool = sortedSymbols.filter(s => getValency(s) === 1);
+    const safeSubstituentPool = substituentPool.length > 0 ? substituentPool : ['H'];
 
     const sizeOfElements = sortedSymbols.length;
     const numBackbone = Math.max(4, sizeOfElements + 1);
@@ -431,55 +425,39 @@ export function generateMaterialCombinations(
     for (let i = 0; i < numBackbone; i++) {
       const sym = i % 2 === 0 ? primary : secondary;
       const valency = getValency(sym);
-      const isChainEnd = i === 0 || i === numBackbone - 1;
-      const chainBondsUsed = isChainEnd ? 1 : 2; // los extremos solo enlazan hacia un lado
+      const isLeftEnd = i === 0;
+      const isRightEnd = i === numBackbone - 1;
+      const chainBondsUsed = (isLeftEnd || isRightEnd) ? 1 : 2; 
       let freeSlots = Math.max(0, valency - chainBondsUsed);
 
       const x = 60 + i * 80;
       const y = 110 + (i % 2 === 0 ? -12 : 12);
       const nodeId = `${sym}_b${i}`;
 
-      nodes.push({
-        id: nodeId,
-        label: sym,
-        x,
-        y,
-        color: colorFor(sym),
-        size: sym === 'H' ? 12 : (sym === 'Si' ? 20 : 18)
-      });
+      nodes.push({ id: nodeId, label: sym, x, y, color: colorFor(sym), size: sym === 'H' ? 12 : (sym === 'Si' ? 20 : 18) });
 
-      // Enlace con el átomo anterior de la cadena
       if (i > 0) {
         const prevSym = (i - 1) % 2 === 0 ? primary : secondary;
-        links.push({
-          source: `${prevSym}_b${i - 1}`,
-          target: nodeId,
-          type: (i === 1 && sortedSymbols.includes('O')) ? 'double' : 'single'
-        });
+        links.push({ source: `${prevSym}_b${i - 1}`, target: nodeId, type: 'single' });
       }
 
-      // Sustituyentes (máx. 2 posiciones dibujadas: arriba/abajo), solo si el átomo
-      // todavía tiene sitios de enlace libres según su valencia real.
-      const slots: Array<{ id: string; dy: number }> = [
-        { id: `top_${i}`, dy: -50 },
-        { id: `bottom_${i}`, dy: 50 }
+      // CORRECCIÓN 2: Ampliar capacidad espacial para nodos terminales (Extremos de cadena)
+      const slots: Array<{ id: string; dx: number; dy: number }> = [
+        { id: `top_${i}`, dx: 0, dy: -50 },
+        { id: `bottom_${i}`, dx: 0, dy: 50 }
       ];
+      
+      // Añadir ranuras laterales solo si están en los extremos para acomodar el 3er o 4to electrón libre
+      if (isLeftEnd) slots.push({ id: `left_${i}`, dx: -50, dy: 0 });
+      if (isRightEnd) slots.push({ id: `right_${i}`, dx: 50, dy: 0 });
 
       for (const slot of slots) {
         if (freeSlots <= 0) break;
-        const subSym = substituentPool.length > 0
-          ? substituentPool[substituentCursor % substituentPool.length]
-          : 'H';
+        
+        const subSym = safeSubstituentPool[substituentCursor % safeSubstituentPool.length];
         substituentCursor++;
 
-        nodes.push({
-          id: slot.id,
-          label: subSym,
-          x,
-          y: y + slot.dy,
-          color: colorFor(subSym),
-          size: subSym === 'H' ? 11 : 15
-        });
+        nodes.push({ id: slot.id, label: subSym, x: x + slot.dx, y: y + slot.dy, color: colorFor(subSym), size: 11 });
         links.push({ source: nodeId, target: slot.id, type: 'single' });
         freeSlots--;
       }
