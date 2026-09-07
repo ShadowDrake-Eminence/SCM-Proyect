@@ -174,8 +174,8 @@ export default function MoleculeVisualizer({ nodes, links, materialName }: Molec
                     cx={nx}
                     cy={ny}
                     r={node.size}
-                    fill="currentColor"
-                    className="text-white dark:text-neutral-900 stroke-neutral-300 dark:stroke-neutral-700"
+                    fill={node.color}
+                    className="stroke-neutral-300 dark:stroke-neutral-700"
                     strokeWidth="1.5"
                   />
 
@@ -185,7 +185,7 @@ export default function MoleculeVisualizer({ nodes, links, materialName }: Molec
                     y={ny + 0.5}
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    className="font-sans font-semibold text-[9px] select-none fill-neutral-800 dark:fill-neutral-200"
+                    className="font-sans font-semibold text-[9px] select-none fill-white"
                   >
                     {node.label}
                   </text>
