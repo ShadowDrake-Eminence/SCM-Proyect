@@ -258,7 +258,19 @@ export function generateMaterialCombinations(
     // Mix selected elements with template
     // We will ensure that the chemical formula contains ALL selected elements
     // plus optionally C and H to maintain realistic carbon chemistry if not chosen
-    const uniqueSymbols = Array.from(new Set(['C', 'H', ...symbols]));
+    let uniqueSymbols = Array.from(new Set(['C', 'H', ...symbols]));
+
+    // Fallback de contingencia para reforzar compatibilidad con tags críticos.
+    if (tags.includes('bio') && !uniqueSymbols.includes('O') && !uniqueSymbols.includes('N')) {
+      uniqueSymbols.push('O');
+    }
+    if (tags.includes('fireproof') && !uniqueSymbols.includes('P') && !uniqueSymbols.includes('F') && !uniqueSymbols.includes('Cl')) {
+      uniqueSymbols.push('P');
+    }
+    if (tags.includes('lightweight')) {
+      uniqueSymbols = uniqueSymbols.filter(sym => sym !== 'Si' && sym !== 'Cl');
+    }
+    uniqueSymbols = Array.from(new Set(uniqueSymbols));
 
     // --- EXPLORACIÓN ALEATORIA + BACKTRACKING + DEDUPLICACIÓN ---
     // Probamos varios vectores de subíndices al azar (cada uno pasa por el ajuste
