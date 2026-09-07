@@ -91,13 +91,24 @@ export default function App() {
     }
   };
 
-  // Handle toggling property tags
+  // Handle toggling property tags with thermomechanical exclusivity
   const handleToggleTag = (tagId: string) => {
-    if (selectedTags.includes(tagId)) {
-      setSelectedTags(selectedTags.filter(t => t !== tagId));
-    } else {
-      setSelectedTags([...selectedTags, tagId]);
-    }
+    const exclusivePairs: Record<string, string[]> = {
+      strong: ['flexible'],
+      flexible: ['strong'],
+      lightweight: ['high-density'],
+      'high-density': ['lightweight']
+    };
+
+    const oppositeTags = exclusivePairs[tagId] || [];
+
+    setSelectedTags(prev => {
+      if (prev.includes(tagId)) {
+        return prev.filter(t => t !== tagId);
+      }
+
+      return [...prev.filter(t => !oppositeTags.includes(t)), tagId];
+    });
   };
 
   // Save current note to state
@@ -234,7 +245,8 @@ export default function App() {
             {/* Interactive Periodic Table */}
             <div id="periodic-table-section">
               <PeriodicTable 
-                selectedElements={selectedElements} 
+                selectedElements={selectedElements}
+                selectedTagIds={selectedTags}
                 onToggleElement={handleToggleElement} 
               />
             </div>

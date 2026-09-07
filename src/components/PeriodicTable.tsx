@@ -3,10 +3,11 @@ import { ELEMENTS, PLASTIC_ELEMENTS } from '../lib/data';
 
 interface PeriodicTableProps {
   selectedElements: string[];
+  selectedTagIds: string[];
   onToggleElement: (symbol: string) => void;
 }
 
-export default function PeriodicTable({ selectedElements, onToggleElement }: PeriodicTableProps) {
+export default function PeriodicTable({ selectedElements, selectedTagIds, onToggleElement }: PeriodicTableProps) {
   // Map elements to their standard Periodic Table columns (1-18) and rows (1-3)
   const getGridPosition = (symbol: string) => {
     switch (symbol) {
@@ -80,13 +81,21 @@ export default function PeriodicTable({ selectedElements, onToggleElement }: Per
 
               const isSelected = selectedElements.includes(element.symbol);
               const isRecommended = isHighlyRecommended(element.symbol);
+              const isLocked =
+                (selectedTagIds.includes('bio') && (element.symbol === 'O' || element.symbol === 'N')) ||
+                (selectedTagIds.includes('fireproof') && (element.symbol === 'P' || element.symbol === 'F' || element.symbol === 'Cl'));
 
               return (
                 <button
                   key={element.symbol}
                   id={`element-btn-${element.symbol.toLowerCase()}`}
-                  onClick={() => onToggleElement(element.symbol)}
-                  className={`relative aspect-square flex flex-col justify-between p-2 rounded transition-all duration-300 group select-none cursor-pointer ${
+                  onClick={() => {
+                    if (isLocked) return;
+                    onToggleElement(element.symbol);
+                  }}
+                  className={`relative aspect-square flex flex-col justify-between p-2 rounded transition-all duration-300 group select-none ${
+                    isLocked ? 'cursor-not-allowed ring-2 ring-red-500 animate-pulse' : 'cursor-pointer'
+                  } ${
                     isSelected
                       ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white scale-[1.05] shadow-sm font-sans'
                       : isRecommended
@@ -94,6 +103,8 @@ export default function PeriodicTable({ selectedElements, onToggleElement }: Per
                         : 'bg-transparent border-black/5 dark:border-white/5 opacity-40 hover:opacity-100 hover:border-black/20 dark:hover:border-white/20 font-sans'
                   }`}
                   style={{ borderWidth: '1px' }}
+                  aria-label={isLocked ? `${element.symbol} bloqueado por una restricción obligatoria` : `${element.symbol} elemento`}
+                  title={isLocked ? 'Bloqueo obligatorio: no se puede deseleccionar' : undefined}
                 >
                   {/* Top line (Atomic Number) */}
                   <div className="flex justify-between items-center w-full">
