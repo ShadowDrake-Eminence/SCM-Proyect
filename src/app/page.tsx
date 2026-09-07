@@ -199,6 +199,9 @@ export default function App() {
   };
 
   const hasInorganicWarning = selectedElements.some(s => !PLASTIC_ELEMENTS.includes(s));
+  const hasBackboneElement = selectedElements.some(symbol =>
+    ELEMENTS.some(element => element.symbol === symbol && element.valency >= 2)
+  );
 
   // Filter combinations based on search query
   const filteredCombinations = combinations.filter(item => {
@@ -274,8 +277,10 @@ export default function App() {
               <button
                 id="synthesize-button"
                 onClick={handleExploreCombinations}
-                disabled={isGenerating}
-                className="w-full relative py-4 px-8 rounded-lg bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-100 text-white dark:text-black font-sans uppercase tracking-[0.2em] text-xs font-semibold transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-3 cursor-pointer border border-transparent"
+                disabled={isGenerating || (!hasBackboneElement && selectedElements.length > 0)}
+                className={`w-full relative py-4 px-8 rounded-lg bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-100 text-white dark:text-black font-sans uppercase tracking-[0.2em] text-xs font-semibold transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-3 cursor-pointer border border-transparent ${
+                  !hasBackboneElement && selectedElements.length > 0 ? 'opacity-50 cursor-not-allowed grayscale' : ''
+                }`}
               >
                 {isGenerating ? (
                   <>
@@ -290,6 +295,9 @@ export default function App() {
                   </>
                 )}
               </button>
+              {!hasBackboneElement && selectedElements.length > 0 && (
+                <p className="text-red-500 text-xs mt-2 animate-pulse">Inviable: Seleccione al menos un elemento con valencia múltiple (ej. C, Si, N) para estructurar la cadena.</p>
+              )}
             </div>
 
             {/* Directory Card with 20 possible combinations list */}

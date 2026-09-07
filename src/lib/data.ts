@@ -218,8 +218,8 @@ export function generateMaterialCombinations(
   selectedTagIds: string[],
   excludeFormulas: Set<string> = new Set()
 ): GeneratedMaterial[] {
-  const symbols = selectedSymbols.length > 0 ? selectedSymbols : ['C', 'H'];
-  const tags = selectedTagIds.length > 0 ? selectedTagIds : ['cheap'];
+  const symbols = Array.from(new Set(selectedSymbols));
+  const tags = selectedTagIds;
 
   // Array para almacenar solo los que superen la validación matemática
   const validCandidates: GeneratedMaterial[] = [];
@@ -230,47 +230,17 @@ export function generateMaterialCombinations(
   const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
   const buildRandomSubscripts = (): Record<string, number> => {
-    const subscripts: Record<string, number> = {
-      C: randomInt(2, 12),
-      H: randomInt(2, 16),
-      O: Math.random() < 0.5 ? randomInt(1, 4) : 0,
-      N: Math.random() < 0.3 ? randomInt(1, 3) : 0,
-      F: Math.random() < 0.25 ? randomInt(1, 4) : 0,
-      Cl: Math.random() < 0.2 ? randomInt(1, 3) : 0,
-      S: Math.random() < 0.2 ? randomInt(1, 3) : 0,
-      Si: Math.random() < 0.2 ? randomInt(1, 3) : 0,
-      P: Math.random() < 0.15 ? randomInt(1, 3) : 0
-    };
-
-    // Aseguramos que los símbolos seleccionados por el usuario estén en la fórmula
-    symbols.forEach(sym => {
-      if (!subscripts[sym] || subscripts[sym] === 0) {
-        subscripts[sym] = randomInt(1, 3);
-      }
-    });
-
-    return subscripts;
+    return Object.fromEntries(symbols.map(sym => [
+      sym,
+      sym === 'C' ? randomInt(2, 12) : sym === 'H' ? randomInt(2, 16) : randomInt(1, 3)
+    ]));
   };
 
   FAMILIES.forEach((fam, index) => {
     const id = `scm-candidate-${index + 1}`;
 
-    // Mix selected elements with template
-    // We will ensure that the chemical formula contains ALL selected elements
-    // plus optionally C and H to maintain realistic carbon chemistry if not chosen
-    let uniqueSymbols = Array.from(new Set(['C', 'H', ...symbols]));
-
-    // Fallback de contingencia para reforzar compatibilidad con tags críticos.
-    if (tags.includes('bio') && !uniqueSymbols.includes('O') && !uniqueSymbols.includes('N')) {
-      uniqueSymbols.push('O');
-    }
-    if (tags.includes('fireproof') && !uniqueSymbols.includes('P') && !uniqueSymbols.includes('F') && !uniqueSymbols.includes('Cl')) {
-      uniqueSymbols.push('P');
-    }
-    if (tags.includes('lightweight')) {
-      uniqueSymbols = uniqueSymbols.filter(sym => sym !== 'Si' && sym !== 'Cl');
-    }
-    uniqueSymbols = Array.from(new Set(uniqueSymbols));
+    const uniqueSymbols = symbols;
+    const adjustmentSymbol = symbols.find(sym => getValency(sym) % 2 === 1) || symbols[0];
 
     // --- EXPLORACIÓN ALEATORIA + BACKTRACKING + DEDUPLICACIÓN ---
     // Probamos varios vectores de subíndices al azar (cada uno pasa por el ajuste
@@ -292,7 +262,8 @@ export function generateMaterialCombinations(
       while (!isValid && attempts < 10) {
         isValid = validarEstequiometria(subscripts);
         if (!isValid) {
-          subscripts['H'] += 1; // Fuerza bruta controlada para estabilizar
+          if (!adjustmentSymbol) break;
+          subscripts[adjustmentSymbol] += 1;
           attempts++;
         }
       }
