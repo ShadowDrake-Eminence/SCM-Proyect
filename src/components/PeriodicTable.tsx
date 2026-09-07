@@ -4,10 +4,11 @@ import { ELEMENTS, PLASTIC_ELEMENTS } from '../lib/data';
 interface PeriodicTableProps {
   selectedElements: string[];
   selectedTagIds: string[];
+  hoveredTagId: string | null;
   onToggleElement: (symbol: string) => void;
 }
 
-export default function PeriodicTable({ selectedElements, selectedTagIds, onToggleElement }: PeriodicTableProps) {
+export default function PeriodicTable({ selectedElements, selectedTagIds, hoveredTagId, onToggleElement }: PeriodicTableProps) {
   // Map elements to their standard Periodic Table columns (1-18) and rows (1-3)
   const getGridPosition = (symbol: string) => {
     switch (symbol) {
@@ -84,6 +85,9 @@ export default function PeriodicTable({ selectedElements, selectedTagIds, onTogg
               const isLocked =
                 (selectedTagIds.includes('bio') && (element.symbol === 'O' || element.symbol === 'N')) ||
                 (selectedTagIds.includes('fireproof') && (element.symbol === 'P' || element.symbol === 'F' || element.symbol === 'Cl'));
+              const isHoverRestricted =
+                (hoveredTagId === 'bio' && (element.symbol === 'O' || element.symbol === 'N')) ||
+                (hoveredTagId === 'fireproof' && (element.symbol === 'P' || element.symbol === 'F' || element.symbol === 'Cl'));
 
               return (
                 <button
@@ -101,7 +105,7 @@ export default function PeriodicTable({ selectedElements, selectedTagIds, onTogg
                       : isRecommended
                         ? 'bg-transparent border-black/30 dark:border-white/35 hover:border-black dark:hover:border-white hover:bg-black/[0.02] dark:hover:bg-white/[0.02] font-sans'
                         : 'bg-transparent border-black/5 dark:border-white/5 opacity-40 hover:opacity-100 hover:border-black/20 dark:hover:border-white/20 font-sans'
-                  }`}
+                  } ${isHoverRestricted && !isSelected ? 'ring-2 ring-orange-400 opacity-50 transition-all' : ''}`}
                   style={{ borderWidth: '1px' }}
                   aria-label={isLocked ? `${element.symbol} bloqueado por una restricción obligatoria` : `${element.symbol} elemento`}
                   title={isLocked ? 'Bloqueo obligatorio: no se puede deseleccionar' : undefined}

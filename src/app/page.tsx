@@ -34,6 +34,7 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generationStep, setGenerationStep] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [hoveredTagId, setHoveredTagId] = useState<string | null>(null);
   
   // Professional Notes stored in key-value map (candidate.id -> notes string)
   const [notebook, setNotebook] = useState<Record<string, string>>({});
@@ -250,6 +251,7 @@ export default function App() {
               <PeriodicTable 
                 selectedElements={selectedElements}
                 selectedTagIds={selectedTags}
+                hoveredTagId={hoveredTagId}
                 onToggleElement={handleToggleElement} 
               />
             </div>
@@ -259,6 +261,7 @@ export default function App() {
               <TagSelector 
                 selectedTags={selectedTags} 
                 onToggleTag={handleToggleTag} 
+                setHoveredTagId={setHoveredTagId}
               />
             </div>
 

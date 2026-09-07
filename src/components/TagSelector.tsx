@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { PROPERTY_TAGS } from '../lib/data';
 import { 
   DollarSign, 
@@ -15,9 +15,19 @@ import {
 interface TagSelectorProps {
   selectedTags: string[];
   onToggleTag: (tagId: string) => void;
+  setHoveredTagId: (id: string | null) => void;
 }
 
-export default function TagSelector({ selectedTags, onToggleTag }: TagSelectorProps) {
+export default function TagSelector({ selectedTags, onToggleTag, setHoveredTagId }: TagSelectorProps) {
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
   
   // Dynamic icon helper map
   const renderIcon = (iconName: string, className: string) => {
@@ -53,6 +63,21 @@ export default function TagSelector({ selectedTags, onToggleTag }: TagSelectorPr
               key={tag.id}
               id={`tag-btn-${tag.id}`}
               onClick={() => onToggleTag(tag.id)}
+              onMouseEnter={() => {
+                if (hoverTimeoutRef.current) {
+                  clearTimeout(hoverTimeoutRef.current);
+                }
+                hoverTimeoutRef.current = setTimeout(() => {
+                  setHoveredTagId(tag.id);
+                }, 800);
+              }}
+              onMouseLeave={() => {
+                if (hoverTimeoutRef.current) {
+                  clearTimeout(hoverTimeoutRef.current);
+                  hoverTimeoutRef.current = null;
+                }
+                setHoveredTagId(null);
+              }}
               className={`flex flex-col p-5 rounded-lg border text-left transition-all duration-300 select-none cursor-pointer group relative ${
                 isSelected
                   ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-sm scale-[1.02]'
