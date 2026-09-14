@@ -16,6 +16,30 @@ El sistema está diseñado para ejecutarse íntegramente en el lado del cliente 
 2. **Cálculo Estequiométrico por Valencias:** El algoritmo previene la generación de moléculas irreales evaluando estrictamente los electrones libres (valencias) de los precursores monoméricos y respetando la regla del octeto para la formación de macromoléculas.
 3. **Poda Dinámica de Diseño (DSP):** Descarte algorítmico temprano de combinaciones termodinámicamente incompatibles o estéricamente inviables.
 
+## 📁 Estructura del Proyecto
+
+```
+src/
+├── app/
+│   ├── page.tsx            # Página principal de la aplicación
+│   ├── layout.tsx          # Layout raíz con configuración global
+│   └── globals.css         # Estilos globales
+├── components/
+│   ├── PeriodicTable.tsx   # Tabla periódica interactiva
+│   ├── MaterialSelector.tsx # Selector de materiales y propiedades
+│   ├── MoleculeVisualizer.tsx # Visualizador 3D de moléculas
+│   ├── TagSelector.tsx     # Selector de etiquetas de compatibilidad
+│   └── ScmLogo.tsx         # Logo de la aplicación
+└── lib/
+    ├── types.ts            # Definiciones de tipos TypeScript
+    └── data.ts             # Datos estáticos JSON y funciones utilitarias
+```
+
+**Descripción de directorios:**
+- **app/:** Contiene las páginas de Next.js usando App Router y configuración de layout
+- **components/:** Componentes React reutilizables de la interfaz
+- **lib/:** Tipos, constantes y funciones de lógica compartida
+
 ## 📦 Dependencias necesarias
 Este proyecto requiere estas dependencias para funcionar correctamente en desarrollo:
 
@@ -46,10 +70,10 @@ Para desplegar este proyecto en un entorno de desarrollo local, ejecuta los sigu
 
 \`\`\`bash
 # Clonar el repositorio
-git clone https://github.com/tu-usuario/scm-project.git
+git clone <URL_DEL_REPOSITORIO>
 
 # Ingresar al directorio
-cd scm-project
+cd SCM-Proyect
 
 # Instalar dependencias
 npm install
