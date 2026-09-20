@@ -270,6 +270,21 @@ export function generateMaterialCombinations(
 
       if (!isValid) continue;
 
+      // DSP por etiquetas: descartar candidatos estequiometricamente validos
+      // que no satisfagan las restricciones funcionales seleccionadas.
+      const hasBioElement = subscripts.O > 0 || subscripts.N > 0;
+      const hasFireproofElement = subscripts.P > 0 || subscripts.F > 0 || subscripts.Cl > 0;
+      const violatesLightweight = subscripts.Si > 0 || subscripts.Cl > 0;
+
+      if (
+        (tags.includes('bio') && !hasBioElement) ||
+        (tags.includes('fireproof') && !hasFireproofElement) ||
+        (tags.includes('lightweight') && violatesLightweight)
+      ) {
+        isValid = false;
+        continue;
+      }
+
       sortedSymbols = uniqueSymbols.filter(s => subscripts[s] > 0).sort((a, b) => {
         if (a === 'C') return -1;
         if (b === 'C') return 1;

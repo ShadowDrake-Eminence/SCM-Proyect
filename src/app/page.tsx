@@ -7,7 +7,7 @@ import PeriodicTable from '../components/PeriodicTable';
 import TagSelector from '../components/TagSelector';
 import MoleculeVisualizer from '../components/MoleculeVisualizer';
 import { MaterialType, GeneratedMaterial } from '../lib/types';
-import { generateMaterialCombinations, PLASTIC_ELEMENTS, ELEMENTS } from '../lib/data';
+import { PLASTIC_ELEMENTS, ELEMENTS } from '../lib/data';
 import { 
   Sparkles, 
   FlaskConical, 
@@ -49,6 +49,7 @@ export default function App() {
   // Se reinicia automáticamente cuando el usuario cambia los elementos o las etiquetas.
   const usedFormulasRef = useRef<Set<string>>(new Set());
   const lastSelectionKeyRef = useRef<string>('');
+  const workerRef = useRef<Worker | null>(null);
 
   const getSelectionKey = () =>
     JSON.stringify([...selectedElements].sort()) + '|' + JSON.stringify([...selectedTags].sort());
@@ -61,16 +62,58 @@ export default function App() {
     }
   };
 
+  const createMaterialWorker = () => new Worker(new URL('../worker.ts', import.meta.url));
+
   useEffect(() => {
     resetExplorationIfSelectionChanged();
-    const list = generateMaterialCombinations(selectedElements, selectedTags, usedFormulasRef.current);
-    list.forEach(c => usedFormulasRef.current.add(c.formula));
-    setCombinations(list);
-    // Auto-select first candidate in the list
-    if (list.length > 0) {
-      setSelectedCandidate(list[0]);
-      setActiveNotes(notebook[list[0].id] || '');
-    }
+    setIsGenerating(true);
+    setGenerationStep('Calculando combinaciones moleculares...');
+
+    const worker = createMaterialWorker();
+    workerRef.current = worker;
+    worker.onmessage = (event: MessageEvent<GeneratedMaterial[]>) => {
+      if (workerRef.current !== worker) return;
+
+      const list = event.data;
+      list.forEach(c => usedFormulasRef.current.add(c.formula));
+      setCombinations(list);
+      setIsGenerating(false);
+      setGenerationStep('');
+      if (list.length > 0) {
+        setSelectedCandidate(list[0]);
+        setActiveNotes(notebook[list[0].id] || '');
+      }
+
+      worker.terminate();
+      workerRef.current = null;
+    };
+    worker.onerror = () => {
+      if (workerRef.current !== worker) return;
+
+      setIsGenerating(false);
+      setGenerationStep('');
+      worker.terminate();
+      workerRef.current = null;
+    };
+    worker.postMessage({
+      selectedElements,
+      selectedTags,
+      excludeFormulas: Array.from(usedFormulasRef.current)
+    });
+
+    return () => {
+      worker.terminate();
+      if (workerRef.current === worker) {
+        workerRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      workerRef.current?.terminate();
+      workerRef.current = null;
+    };
   }, []);
 
   // Update active notes when selected candidate changes
@@ -139,37 +182,42 @@ export default function App() {
 
   // Main synthesis triggers to find new possible combinations
   const handleExploreCombinations = () => {
+    workerRef.current?.terminate();
+    workerRef.current = null;
+    resetExplorationIfSelectionChanged();
     setIsGenerating(true);
-    
-    const steps = [
-      'Analizando reactividad electrónica...',
-      'Mapeando cadenas covalentes posibles...',
-      'Calculando grado de reticulación...',
-      'Filtrando por afinidad de etiquetas...',
-      'Estabilizando 20 formulaciones viables...'
-    ];
 
-    let currentStepIdx = 0;
-    setGenerationStep(steps[0]);
+    setGenerationStep('Calculando combinaciones moleculares...');
+    const worker = createMaterialWorker();
+    workerRef.current = worker;
+    worker.onmessage = (event: MessageEvent<GeneratedMaterial[]>) => {
+      if (workerRef.current !== worker) return;
 
-    const interval = setInterval(() => {
-      currentStepIdx++;
-      if (currentStepIdx < steps.length) {
-        setGenerationStep(steps[currentStepIdx]);
-      }
-    }, 300);
-
-    setTimeout(() => {
-      clearInterval(interval);
-      resetExplorationIfSelectionChanged();
-      const list = generateMaterialCombinations(selectedElements, selectedTags, usedFormulasRef.current);
+      const list = event.data;
       list.forEach(c => usedFormulasRef.current.add(c.formula));
       setCombinations(list);
       setIsGenerating(false);
+      setGenerationStep('');
       if (list.length > 0) {
         setSelectedCandidate(list[0]);
       }
-    }, 1500);
+
+      worker.terminate();
+      workerRef.current = null;
+    };
+    worker.onerror = () => {
+      if (workerRef.current !== worker) return;
+
+      setIsGenerating(false);
+      setGenerationStep('');
+      worker.terminate();
+      workerRef.current = null;
+    };
+    worker.postMessage({
+      selectedElements,
+      selectedTags,
+      excludeFormulas: Array.from(usedFormulasRef.current)
+    });
   };
 
   // Copy candidate formula and metadata to clipboard
