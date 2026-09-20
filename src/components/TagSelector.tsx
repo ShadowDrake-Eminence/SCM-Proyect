@@ -55,7 +55,7 @@ export default function TagSelector({ selectedTags, onToggleTag, setHoveredTagId
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
         {PROPERTY_TAGS.map((tag) => {
           const isSelected = selectedTags.includes(tag.id);
           return (
@@ -78,7 +78,7 @@ export default function TagSelector({ selectedTags, onToggleTag, setHoveredTagId
                 }
                 setHoveredTagId(null);
               }}
-              className={`flex flex-col p-5 rounded-lg border text-left transition-all duration-300 select-none cursor-pointer group relative ${
+              className={`min-h-[140px] h-full flex flex-col p-5 rounded-lg border text-left transition-all duration-300 select-none cursor-pointer group relative ${
                 isSelected
                   ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-sm scale-[1.02]'
                   : 'bg-transparent border-black/5 dark:border-white/10 hover:border-black/20 dark:hover:border-white/30 hover:bg-black/[0.01] dark:hover:bg-white/[0.01]'
@@ -92,7 +92,7 @@ export default function TagSelector({ selectedTags, onToggleTag, setHoveredTagId
                 }`}>
                   {renderIcon(tag.icon, 'w-4 h-4')}
                 </div>
-                <span className={`text-xs uppercase tracking-wider font-semibold font-sans ${
+                <span className={`break-words whitespace-normal text-sm md:text-base leading-tight uppercase tracking-wider font-semibold font-sans ${
                   isSelected ? 'text-white dark:text-black' : 'text-black/80 dark:text-white/80'
                 }`}>
                   {tag.name}
