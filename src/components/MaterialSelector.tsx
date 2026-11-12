@@ -13,7 +13,6 @@ export default function MaterialSelector({ selected, onChange }: MaterialSelecto
   const materials: Array<{ id: MaterialType; name: string; available: boolean }> = [
     { id: 'Metales', name: 'Metales', available: false },
     { id: 'Polímeros', name: 'Polímeros', available: true },
-    { id: 'Gases', name: 'Gases', available: false },
     { id: 'Cerámicos', name: 'Cerámicos', available: false }
   ];
 
@@ -81,4 +80,3 @@ export default function MaterialSelector({ selected, onChange }: MaterialSelecto
     </div>
   );
 }
-
