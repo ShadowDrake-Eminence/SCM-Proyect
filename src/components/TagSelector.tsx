@@ -55,7 +55,7 @@ export default function TagSelector({ selectedTags, onToggleTag, setHoveredTagId
         </p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
         {PROPERTY_TAGS.map((tag) => {
           const isSelected = selectedTags.includes(tag.id);
           return (
@@ -78,21 +78,21 @@ export default function TagSelector({ selectedTags, onToggleTag, setHoveredTagId
                 }
                 setHoveredTagId(null);
               }}
-              className={`min-h-[140px] h-full flex flex-col p-5 rounded-lg border text-left transition-all duration-300 select-none cursor-pointer group relative ${
+              className={`min-h-[140px] h-full w-full overflow-hidden flex flex-col p-4 rounded-lg border text-left transition-all duration-300 select-none cursor-pointer group relative ${
                 isSelected
                   ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-sm scale-[1.02]'
                   : 'bg-transparent border-black/5 dark:border-white/10 hover:border-black/20 dark:hover:border-white/30 hover:bg-black/[0.01] dark:hover:bg-white/[0.01]'
               }`}
             >
-              <div className="flex items-center gap-2 mb-3">
-                <div className={`p-1.5 rounded transition-all duration-300 ${
+              <div className="flex items-start gap-2 mb-3 min-w-0 w-full">
+                <div className={`shrink-0 p-1.5 rounded transition-all duration-300 ${
                   isSelected 
                     ? 'bg-white/10 text-white dark:bg-black/10 dark:text-black' 
                     : 'bg-black/5 dark:bg-white/5 text-black/60 dark:text-white/60'
                 }`}>
                   {renderIcon(tag.icon, 'w-4 h-4')}
                 </div>
-                <span className={`break-words whitespace-normal text-sm md:text-base leading-tight uppercase tracking-wider font-semibold font-sans ${
+                <span className={`min-w-0 flex-1 text-[11px] sm:text-xs leading-snug uppercase tracking-wide font-semibold font-sans break-words [overflow-wrap:anywhere] ${
                   isSelected ? 'text-white dark:text-black' : 'text-black/80 dark:text-white/80'
                 }`}>
                   {tag.name}
@@ -111,4 +111,3 @@ export default function TagSelector({ selectedTags, onToggleTag, setHoveredTagId
     </div>
   );
 }
-
