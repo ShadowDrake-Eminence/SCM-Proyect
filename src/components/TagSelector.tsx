@@ -88,8 +88,8 @@ export default function TagSelector({ selectedTags, onToggleTag, setHoveredTagId
               <div className="w-full min-w-0">
                 <div className="flex items-center justify-between mb-2.5">
                   <div className={`shrink-0 p-1.5 rounded transition-all duration-300 ${
-                    isSelected 
-                      ? 'bg-white/10 text-white dark:bg-black/10 dark:text-black' 
+                    isSelected
+                      ? 'bg-white/10 text-white dark:bg-black/10 dark:text-black'
                       : 'bg-black/5 dark:bg-white/5 text-black/60 dark:text-white/60'
                   }`}>
                     {renderIcon(tag.icon, 'w-4 h-4')}
