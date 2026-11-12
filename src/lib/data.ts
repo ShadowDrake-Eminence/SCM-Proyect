@@ -186,18 +186,15 @@ function validarEstequiometria(subscripts: Record<string, number>): boolean {
 
   // REGLA 2: Estabilidad Espacial. Los terminales (H, Cl) no pueden exceder
   // los sitios de enlace disponibles en la cadena principal (Backbone).
-  const backboneAtoms = Object.keys(subscripts).filter(sym => {
-    const el = ELEMENTS.find(e => e.symbol === sym);
-    return el && el.valency > 1 && subscripts[sym] > 0;
-  }).reduce((sum, sym) => sum + subscripts[sym], 0);
+  const backboneAtoms = Object.keys(subscripts)
+    .filter(sym => getValency(sym) >= 2 && subscripts[sym] > 0)
+    .reduce((sum, sym) => sum + subscripts[sym], 0);
 
-  if (backboneAtoms > 0) {
-    // Sitios disponibles = Suma de valencias - (2 enlaces internos por cada átomo conectado)
-    const availableSites = backboneSites - 2 * (backboneAtoms - 1);
-    // Restamos 2 sitios para permitir que el polímero continúe la cadena infinitamente
-    const polymerSites = availableSites - 2; 
-    if (terminals > polymerSites) return false;
-  }
+  if (backboneAtoms === 0) return false;
+
+  const maxAvailableSites = backboneSites - 2 * (backboneAtoms - 1);
+  const minAvailableSites = Math.max(0, backboneSites - 4 * (backboneAtoms - 1));
+  if (terminals > maxAvailableSites || terminals < minAvailableSites) return false;
 
   return true;
 }
@@ -388,9 +385,8 @@ export function generateMaterialCombinations(
     }
     description += `Esta formulación teórica es ideal para que el investigador profesional analice su viabilidad sintética y simulación de dinámica molecular de fase secundaria.`;
 
-    // Generate one visual node for every atom in the formula. The previous
-    // approximation built a fixed-size graph from only two backbone elements,
-    // which silently dropped elements such as S and changed the formula counts.
+    // Generate one visual node for every atom in the formula, separating
+    // multivalent backbone atoms from monovalent terminal leaves.
     const nodes: Array<{ id: string; label: string; x: number; y: number; color: string; size: number }> = [];
     const links: Array<{ source: string; target: string; type: 'single' | 'double' }> = [];
 
@@ -406,27 +402,81 @@ export function generateMaterialCombinations(
       return '#27272a';
     };
 
-    const formulaAtoms = sortedSymbols.flatMap(sym =>
-      Array.from({ length: subscripts[sym] || 0 }, () => sym)
-    );
+    const backboneList: string[] = [];
+    const terminalList: string[] = [];
+    Object.keys(subscripts).forEach(sym => {
+      const count = subscripts[sym];
+      if (count <= 0) return;
+      const target = getValency(sym) >= 2 ? backboneList : terminalList;
+      for (let i = 0; i < count; i++) target.push(sym);
+    });
 
-    formulaAtoms.forEach((sym, index) => {
-      const nodeId = `${sym}_${index}`;
+    backboneList.sort((a, b) => getValency(b) - getValency(a));
+    const freeValence = backboneList.map(sym => getValency(sym));
+    const backboneIds = backboneList.map((sym, i) => `${sym}_b${i}`);
+
+    backboneList.forEach((sym, i) => {
+      const x = 60 + i * 85;
+      const y = 110 + (i % 2 === 0 ? -10 : 10);
       nodes.push({
-        id: nodeId,
+        id: backboneIds[i],
         label: sym,
-        x: 60 + index * 80,
-        y: 110 + (index % 2 === 0 ? -12 : 12),
+        x,
+        y,
         color: colorFor(sym),
-        size: sym === 'H' ? 12 : (sym === 'Si' ? 20 : 18)
+        size: sym === 'Si' ? 20 : 18
       });
 
-      if (index > 0) {
+      if (i > 0) {
         links.push({
-          source: `${formulaAtoms[index - 1]}_${index - 1}`,
-          target: nodeId,
+          source: backboneIds[i - 1],
+          target: backboneIds[i],
           type: 'single'
         });
+        freeValence[i - 1] -= 1;
+        freeValence[i] -= 1;
+      }
+    });
+
+    let totalFree = freeValence.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < links.length && i + 1 < freeValence.length; i++) {
+      if (
+        totalFree > terminalList.length &&
+        freeValence[i] > 0 &&
+        freeValence[i + 1] > 0 &&
+        links[i].type === 'single'
+      ) {
+        links[i].type = 'double';
+        freeValence[i] -= 1;
+        freeValence[i + 1] -= 1;
+        totalFree -= 2;
+      }
+    }
+
+    let termIdx = 0;
+    backboneList.forEach((_, i) => {
+      const slots: Array<{ dx: number; dy: number; suffix: string }> = [
+        { dx: 0, dy: -52, suffix: 'top' },
+        { dx: 0, dy: 52, suffix: 'bot' }
+      ];
+      if (i === 0) slots.unshift({ dx: -52, dy: 0, suffix: 'left' });
+      if (i === backboneList.length - 1) slots.push({ dx: 52, dy: 0, suffix: 'right' });
+
+      for (const slot of slots) {
+        if (freeValence[i] <= 0 || termIdx >= terminalList.length) break;
+        const termSym = terminalList[termIdx++];
+        const termId = `${termSym}_t${termIdx}_${slot.suffix}`;
+        const backboneNode = nodes[i];
+        nodes.push({
+          id: termId,
+          label: termSym,
+          x: backboneNode.x + slot.dx,
+          y: backboneNode.y + slot.dy,
+          color: colorFor(termSym),
+          size: termSym === 'H' ? 12 : 15
+        });
+        links.push({ source: backboneNode.id, target: termId, type: 'single' });
+        freeValence[i] -= 1;
       }
     });
 
