@@ -198,6 +198,53 @@ function validarEstequiometria(subscripts: Record<string, number>): boolean {
   return true;
 }
 
+// Devuelve los símbolos de elementos PROHIBIDOS (que se marcan en rojo) según las etiquetas activas
+export function getForbiddenElements(selectedTagIds: string[]): string[] {
+  const forbidden = new Set<string>();
+  if (selectedTagIds.includes('bio')) {
+    ['F', 'Cl', 'Si'].forEach(s => forbidden.add(s));
+  }
+  if (selectedTagIds.includes('cheap')) {
+    ['F', 'Si', 'P'].forEach(s => forbidden.add(s));
+  }
+  if (selectedTagIds.includes('transparent')) {
+    ['S', 'P'].forEach(s => forbidden.add(s));
+  }
+  if (selectedTagIds.includes('fireproof')) {
+    forbidden.add('S');
+  }
+  return Array.from(forbidden);
+}
+
+// Evalúa si la selección actual del usuario es química y matemáticamente viable antes de generar
+export function validateSelectionFeasibility(
+  selectedSymbols: string[],
+  selectedTagIds: string[]
+): { viable: boolean; reason?: string } {
+  const forbidden = getForbiddenElements(selectedTagIds);
+  const allowed = selectedSymbols.filter(s => !forbidden.includes(s));
+
+  const hasBackbone = allowed.some(s => getValency(s) >= 2);
+  const hasTerminal = allowed.some(s => getValency(s) === 1);
+
+  if (!hasBackbone) {
+    return { viable: false, reason: 'Seleccione al menos un elemento estructural de cadena (C, Si, N, O, P o S) que no esté bloqueado en rojo.' };
+  }
+  if (!hasTerminal) {
+    return { viable: false, reason: 'Seleccione al menos un elemento terminal monovalente (H, F o Cl) disponible para saturar los enlaces.' };
+  }
+  if (selectedTagIds.includes('bio') && !allowed.some(s => s === 'O' || s === 'N')) {
+    return { viable: false, reason: 'La etiqueta Biodegradable requiere seleccionar Oxígeno (O) o Nitrógeno (N) para formar enlaces hidrolizables.' };
+  }
+  if (selectedTagIds.includes('fireproof') && !allowed.some(s => s === 'P' || s === 'F' || s === 'Cl')) {
+    return { viable: false, reason: 'La etiqueta Ignífugo requiere seleccionar al menos un retardante de llama (P, F o Cl).' };
+  }
+  if (selectedTagIds.includes('flexible') && selectedTagIds.includes('strong')) {
+    return { viable: false, reason: 'Conflicto termomecánico: "Flexible" y "Alta Resistencia" exigen densidades de reticulación opuestas.' };
+  }
+  return { viable: true };
+}
+
 
 /**
  * el generador pa
@@ -216,9 +263,14 @@ export function generateMaterialCombinations(
 ): GeneratedMaterial[] {
   const symbols = Array.from(new Set(selectedSymbols));
   const tags = selectedTagIds;
+  const feasibility = validateSelectionFeasibility(symbols, tags);
+  if (!feasibility.viable) return [];
+  const forbidden = new Set(getForbiddenElements(tags));
+  const allowedSymbols = symbols.filter(sym => !forbidden.has(sym));
 
   // Array para almacenar solo los que superen la validación matemática
   const validCandidates: GeneratedMaterial[] = [];
+  const batchFormulas = new Set<string>();
 
   // Genera un vector de subíndices aleatorio dentro de rangos razonables para una
   // unidad repetitiva de polímero, garantizando que los símbolos elegidos por el
@@ -226,7 +278,7 @@ export function generateMaterialCombinations(
   const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
   const buildRandomSubscripts = (): Record<string, number> => {
-    return Object.fromEntries(symbols.map(sym => [
+    return Object.fromEntries(allowedSymbols.map(sym => [
       sym,
       sym === 'C' ? randomInt(2, 12) : sym === 'H' ? randomInt(2, 16) : randomInt(1, 3)
     ]));
@@ -235,7 +287,7 @@ export function generateMaterialCombinations(
   FAMILIES.forEach((fam, index) => {
     const id = `scm-candidate-${index + 1}`;
 
-    const uniqueSymbols = symbols;
+    const uniqueSymbols = allowedSymbols;
     // --- EXPLORACIÓN ALEATORIA + BACKTRACKING + DEDUPLICACIÓN ---
     // Probamos varios vectores de subíndices al azar (cada uno pasa por la validación
     // estricta de valencia) hasta encontrar uno válido que además no se haya
@@ -288,15 +340,16 @@ export function generateMaterialCombinations(
       });
       formula = `(${formulaParts})ₙ`;
 
-      if (!excludeFormulas.has(formula)) break; // encontramos una fórmula válida Y nueva
+      if (!batchFormulas.has(formula)) break; // fórmula única dentro de esta tirada
       isValid = false; // era válida pero repetida: seguimos intentando
     }
 
     // DSP: si no se encontró una fórmula válida y nueva tras varios intentos, podamos esta rama
     if (!isValid) return;
 
-    // Registramos la fórmula de inmediato para que ninguna otra familia de este mismo
-    // lote (ni de una futura llamada) pueda repetirla.
+    // Registramos la fórmula de inmediato para impedir repeticiones dentro del lote
+    // y conservar el historial de exploración.
+    batchFormulas.add(formula);
     excludeFormulas.add(formula);
 
     // Dynamic systematic name

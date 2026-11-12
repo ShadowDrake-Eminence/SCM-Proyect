@@ -1,5 +1,5 @@
 import React from 'react';
-import { ELEMENTS, PLASTIC_ELEMENTS } from '../lib/data';
+import { ELEMENTS, getForbiddenElements, PLASTIC_ELEMENTS } from '../lib/data';
 
 interface PeriodicTableProps {
   selectedElements: string[];
@@ -40,6 +40,8 @@ export default function PeriodicTable({ selectedElements, selectedTagIds, hovere
   const isHighlyRecommended = (symbol: string) => {
     return PLASTIC_ELEMENTS.includes(symbol);
   };
+
+  const forbiddenElements = new Set(getForbiddenElements(selectedTagIds));
 
   return (
     <div className="bg-white dark:bg-black/40 border border-black/5 dark:border-white/10 rounded-xl p-8 shadow-[0_4px_30px_rgba(0,0,0,0.02)]">
@@ -82,37 +84,36 @@ export default function PeriodicTable({ selectedElements, selectedTagIds, hovere
 
               const isSelected = selectedElements.includes(element.symbol);
               const isRecommended = isHighlyRecommended(element.symbol);
-              const isLocked =
-                (selectedTagIds.includes('bio') && (element.symbol === 'O' || element.symbol === 'N')) ||
-                (selectedTagIds.includes('fireproof') && (element.symbol === 'P' || element.symbol === 'F' || element.symbol === 'Cl'));
-              const isHoverRestricted =
-                (hoveredTagId === 'bio' && (element.symbol === 'O' || element.symbol === 'N')) ||
-                (hoveredTagId === 'fireproof' && (element.symbol === 'P' || element.symbol === 'F' || element.symbol === 'Cl'));
+              const isForbidden = forbiddenElements.has(element.symbol);
+              const isHoverRestricted = hoveredTagId !== null && getForbiddenElements([hoveredTagId]).includes(element.symbol);
 
               return (
                 <button
                   key={element.symbol}
                   id={`element-btn-${element.symbol.toLowerCase()}`}
                   onClick={() => {
-                    if (isLocked) return;
+                    if (isForbidden) return;
                     onToggleElement(element.symbol);
                   }}
                   className={`relative aspect-square flex flex-col justify-between p-2 rounded transition-all duration-300 group select-none ${
-                    isLocked ? 'cursor-not-allowed ring-2 ring-red-500 animate-pulse' : 'cursor-pointer'
+                    isForbidden ? 'cursor-not-allowed ring-2 ring-red-500 bg-red-500/10 text-red-600 dark:text-red-400' : 'cursor-pointer'
                   } ${
-                    isSelected
+                    isForbidden
+                      ? 'border-red-500/70'
+                      : isSelected
                       ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white scale-[1.05] shadow-sm font-sans'
                       : isRecommended
                         ? 'bg-transparent border-black/30 dark:border-white/35 hover:border-black dark:hover:border-white hover:bg-black/[0.02] dark:hover:bg-white/[0.02] font-sans'
                         : 'bg-transparent border-black/5 dark:border-white/5 opacity-40 hover:opacity-100 hover:border-black/20 dark:hover:border-white/20 font-sans'
                   } ${isHoverRestricted && !isSelected ? 'ring-2 ring-orange-400 opacity-50 transition-all' : ''}`}
                   style={{ borderWidth: '1px' }}
-                  aria-label={isLocked ? `${element.symbol} bloqueado por una restricción obligatoria` : `${element.symbol} elemento`}
-                  title={isLocked ? 'Bloqueo obligatorio: no se puede deseleccionar' : undefined}
+                  aria-disabled={isForbidden}
+                  aria-label={isForbidden ? `${element.symbol} prohibido por las etiquetas activas` : `${element.symbol} elemento`}
+                  title={isForbidden ? 'Elemento incompatible con las etiquetas activas' : undefined}
                 >
                   {/* Top line (Atomic Number) */}
                   <div className="flex justify-between items-center w-full">
-                    <span className={`text-[8px] font-mono leading-none ${isSelected ? 'text-white/60 dark:text-black/60' : 'text-black/40 dark:text-white/40'}`}>
+                    <span className={`text-[8px] font-mono leading-none ${isSelected && !isForbidden ? 'text-white/60 dark:text-black/60' : 'text-black/40 dark:text-white/40'}`}>
                       {element.number}
                     </span>
                   </div>
@@ -120,7 +121,7 @@ export default function PeriodicTable({ selectedElements, selectedTagIds, hovere
                   {/* Central Chemical Symbol */}
                   <div className="flex flex-col items-center justify-center w-full my-auto">
                     <span className={`font-sans font-normal leading-none tracking-tight ${
-                      isSelected 
+                      isSelected && !isForbidden
                         ? 'text-white dark:text-black text-base' 
                         : 'text-black dark:text-white text-sm'
                     }`}>
@@ -130,7 +131,7 @@ export default function PeriodicTable({ selectedElements, selectedTagIds, hovere
 
                   {/* Bottom Element Name */}
                   <span className={`text-[8px] truncate block w-full text-center leading-none tracking-wide font-sans ${
-                    isSelected ? 'text-white/60 dark:text-black/60' : 'text-black/40 dark:text-white/40'
+                    isSelected && !isForbidden ? 'text-white/60 dark:text-black/60' : 'text-black/40 dark:text-white/40'
                   }`}>
                     {element.name}
                   </span>

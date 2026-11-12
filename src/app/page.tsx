@@ -7,7 +7,7 @@ import PeriodicTable from '../components/PeriodicTable';
 import TagSelector from '../components/TagSelector';
 import MoleculeVisualizer from '../components/MoleculeVisualizer';
 import { MaterialType, GeneratedMaterial } from '../lib/types';
-import { PLASTIC_ELEMENTS, ELEMENTS } from '../lib/data';
+import { PLASTIC_ELEMENTS, getForbiddenElements, validateSelectionFeasibility } from '../lib/data';
 import { 
   Sparkles, 
   FlaskConical, 
@@ -33,6 +33,7 @@ export default function App() {
   const [selectedCandidate, setSelectedCandidate] = useState<GeneratedMaterial | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generationStep, setGenerationStep] = useState<string>('');
+  const [generationError, setGenerationError] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [hoveredTagId, setHoveredTagId] = useState<string | null>(null);
   
@@ -63,8 +64,17 @@ export default function App() {
   };
 
   const createMaterialWorker = () => new Worker(new URL('../worker.ts', import.meta.url));
+  const selectionFeasibility = validateSelectionFeasibility(selectedElements, selectedTags);
 
   useEffect(() => {
+    if (!selectionFeasibility.viable) {
+      setIsGenerating(false);
+      setGenerationStep('');
+      setGenerationError(selectionFeasibility.reason || 'La selección actual no es viable.');
+      return;
+    }
+
+    setGenerationError('');
     resetExplorationIfSelectionChanged();
     setIsGenerating(true);
     setGenerationStep('Calculando combinaciones moleculares...');
@@ -125,6 +135,7 @@ export default function App() {
 
   // Handle toggling periodic table elements
   const handleToggleElement = (symbol: string) => {
+    if (getForbiddenElements(selectedTags).includes(symbol)) return;
     if (selectedElements.includes(symbol)) {
       // Don't allow empty selection for stable compounds
       if (selectedElements.length > 1) {
@@ -146,13 +157,12 @@ export default function App() {
 
     const oppositeTags = exclusivePairs[tagId] || [];
 
-    setSelectedTags(prev => {
-      if (prev.includes(tagId)) {
-        return prev.filter(t => t !== tagId);
-      }
-
-      return [...prev.filter(t => !oppositeTags.includes(t)), tagId];
-    });
+    const nextTags = selectedTags.includes(tagId)
+      ? selectedTags.filter(t => t !== tagId)
+      : [...selectedTags.filter(t => !oppositeTags.includes(t)), tagId];
+    setSelectedTags(nextTags);
+    const forbidden = new Set(getForbiddenElements(nextTags));
+    setSelectedElements(prev => prev.filter(symbol => !forbidden.has(symbol)));
   };
 
   // Save current note to state
@@ -182,6 +192,12 @@ export default function App() {
 
   // Main synthesis triggers to find new possible combinations
   const handleExploreCombinations = () => {
+    if (!selectionFeasibility.viable) {
+      setGenerationError(selectionFeasibility.reason || 'La selección actual no es viable.');
+      return;
+    }
+
+    setGenerationError('');
     workerRef.current?.terminate();
     workerRef.current = null;
     resetExplorationIfSelectionChanged();
@@ -248,9 +264,6 @@ export default function App() {
   };
 
   const hasInorganicWarning = selectedElements.some(s => !PLASTIC_ELEMENTS.includes(s));
-  const hasBackboneElement = selectedElements.some(symbol =>
-    ELEMENTS.some(element => element.symbol === symbol && element.valency >= 2)
-  );
 
   // Filter combinations based on search query
   const filteredCombinations = combinations.filter(item => {
@@ -328,9 +341,9 @@ export default function App() {
               <button
                 id="synthesize-button"
                 onClick={handleExploreCombinations}
-                disabled={isGenerating || (!hasBackboneElement && selectedElements.length > 0)}
+                disabled={isGenerating || !selectionFeasibility.viable}
                 className={`w-full relative py-4 px-8 rounded-lg bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-100 text-white dark:text-black font-sans uppercase tracking-[0.2em] text-xs font-semibold transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-3 cursor-pointer border border-transparent ${
-                  !hasBackboneElement && selectedElements.length > 0 ? 'opacity-50 cursor-not-allowed grayscale' : ''
+                  !selectionFeasibility.viable ? 'opacity-50 cursor-not-allowed grayscale' : ''
                 }`}
               >
                 {isGenerating ? (
@@ -346,8 +359,11 @@ export default function App() {
                   </>
                 )}
               </button>
-              {!hasBackboneElement && selectedElements.length > 0 && (
-                <p className="text-red-500 text-xs mt-2 animate-pulse">Inviable: Seleccione al menos un elemento con valencia múltiple (ej. C, Si, N) para estructurar la cadena.</p>
+              {!selectionFeasibility.viable && (
+                <p className="text-red-500 text-xs mt-2 animate-pulse">{selectionFeasibility.reason}</p>
+              )}
+              {generationError && selectionFeasibility.viable && (
+                <p className="text-red-500 text-xs mt-2">{generationError}</p>
               )}
             </div>
 
