@@ -1,4 +1,8 @@
-import React, { useEffect, useState } from 'react';
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 interface AtomNode {
   id: string;
@@ -19,197 +23,246 @@ interface MoleculeVisualizerProps {
   nodes: AtomNode[];
   links: AtomLink[];
   materialName: string;
+  formula?: string;
 }
 
-export default function MoleculeVisualizer({ nodes, links, materialName }: MoleculeVisualizerProps) {
-  const [vibrationOffset, setVibrationOffset] = useState<number>(0);
+type AtomStyle = { fill: string; ring: string; text?: string };
+
+const CPK_COLORS: Record<string, AtomStyle> = {
+  C: { fill: '#2b2d33', ring: '#6c727f' },
+  H: { fill: '#d8dce3', ring: '#ffffff', text: '#111111' },
+  O: { fill: '#a61c1c', ring: '#ea3838' },
+  N: { fill: '#1c4596', ring: '#3b73e0' },
+  F: { fill: '#288f4c', ring: '#42d475' },
+  Cl: { fill: '#1f7a3f', ring: '#34c768' },
+  Si: { fill: '#4b6e82', ring: '#6f9eb8' },
+  P: { fill: '#d97714', ring: '#ff9830' },
+  S: { fill: '#b59e1b', ring: '#ebd034', text: '#111111' },
+};
+
+const UI_COLORS: Record<string, AtomStyle> = {
+  C: { fill: '#34363b', ring: '#5a5f69' },
+  H: { fill: '#b85418', ring: '#e06b22' },
+  O: { fill: '#8f1d1d', ring: '#d63333' },
+  N: { fill: '#193b7a', ring: '#3468c7' },
+  F: { fill: '#1e6b3a', ring: '#2ea357' },
+  Cl: { fill: '#1b5e34', ring: '#2ea357' },
+  Si: { fill: '#2c5e66', ring: '#428a96' },
+  P: { fill: '#6e3582', ring: '#9f4fbd' },
+  S: { fill: '#8c7a19', ring: '#c7b02c' },
+};
+
+function getStyle(symbol: string, palette: 'ui' | 'cpk'): AtomStyle {
+  return (palette === 'ui' ? UI_COLORS : CPK_COLORS)[symbol] || { fill: '#4b5563', ring: '#9ca3af' };
+}
+
+function createLabelTexture(symbol: string, style: AtomStyle) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const context = canvas.getContext('2d');
+  if (!context) return new THREE.CanvasTexture(canvas);
+
+  const center = 128;
+  context.beginPath();
+  context.arc(center, center, 112, 0, Math.PI * 2);
+  context.fillStyle = `${style.fill}f2`;
+  context.fill();
+  context.lineWidth = 9;
+  context.strokeStyle = style.ring;
+  context.stroke();
+  context.fillStyle = style.text || '#ffffff';
+  context.font = `bold ${symbol.length > 1 ? 70 : 88}px Arial`;
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillText(symbol, center, center + 3);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function addCylinder(
+  group: THREE.Group,
+  start: THREE.Vector3,
+  end: THREE.Vector3,
+  radius: number,
+  color: number,
+  opacity = 1,
+  offset = new THREE.Vector3(),
+) {
+  const direction = new THREE.Vector3().subVectors(end, start);
+  const length = direction.length();
+  const material = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity });
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, 10), material);
+  mesh.position.copy(start).add(end).multiplyScalar(0.5).add(offset);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+  group.add(mesh);
+}
+
+export default function MoleculeVisualizer({ nodes, links, materialName, formula }: MoleculeVisualizerProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [palette, setPalette] = useState<'ui' | 'cpk'>('ui');
+  const [autoRotate, setAutoRotate] = useState(true);
 
   useEffect(() => {
-    let animId: number;
-    let t = 0;
-    const update = () => {
-      t += 0.05;
-      setVibrationOffset(Math.sin(t) * 0.4);
-      animId = requestAnimationFrame(update);
+    const canvas = canvasRef.current;
+    const viewport = viewportRef.current;
+    if (!canvas || !viewport || nodes.length === 0) return;
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(42, 2, 0.1, 150);
+    camera.position.set(0, 1.8, 12);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.82));
+    const light = new THREE.DirectionalLight(0xffffff, 0.8);
+    light.position.set(8, 12, 10);
+    scene.add(light);
+
+    const controls = new OrbitControls(camera, canvas);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.autoRotate = autoRotate;
+    controls.autoRotateSpeed = 0.9;
+
+    const molecule = new THREE.Group();
+    const positions = new Map<string, THREE.Vector3>();
+    const minX = Math.min(...nodes.map(node => node.x));
+    const maxX = Math.max(...nodes.map(node => node.x));
+    const centerX = (minX + maxX) / 2;
+    const scale = Math.max(0.013, Math.min(0.027, 7 / Math.max(1, maxX - minX)));
+
+    nodes.forEach((node) => {
+      const position = new THREE.Vector3((node.x - centerX) * scale, -(node.y - 110) * scale, (node.x % 3) * 0.12);
+      positions.set(node.id, position);
+      const style = getStyle(node.label, palette);
+      const atom = new THREE.Group();
+      atom.position.copy(position);
+      atom.add(new THREE.Mesh(
+        new THREE.SphereGeometry(Math.max(0.18, node.size * 0.018), 20, 20),
+        new THREE.MeshStandardMaterial({ color: style.fill, roughness: 0.4, metalness: 0.1 }),
+      ));
+      const label = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: createLabelTexture(node.label, style),
+        depthTest: false,
+      }));
+      const labelSize = Math.max(0.46, node.size * 0.041);
+      label.scale.set(labelSize, labelSize, 1);
+      label.renderOrder = 2;
+      atom.add(label);
+      molecule.add(atom);
+    });
+
+    links.forEach((link) => {
+      const start = positions.get(link.source);
+      const end = positions.get(link.target);
+      if (!start || !end) return;
+      const direction = new THREE.Vector3().subVectors(end, start);
+      const perpendicular = new THREE.Vector3(0, 0, 1).cross(direction).normalize();
+      if (perpendicular.lengthSq() < 0.01) perpendicular.set(1, 0, 0);
+      const bondColor = link.type === 'double' ? 0x7d8594 : 0x626878;
+      if (link.type === 'double') {
+        addCylinder(molecule, start, end, 0.045, bondColor, 1, perpendicular.clone().multiplyScalar(0.085));
+        addCylinder(molecule, start, end, 0.045, bondColor, 1, perpendicular.clone().multiplyScalar(-0.085));
+      } else {
+        addCylinder(molecule, start, end, 0.052, bondColor);
+      }
+    });
+
+    scene.add(molecule);
+
+    const resize = () => {
+      const width = viewport.clientWidth;
+      const height = viewport.clientHeight;
+      renderer.setSize(width, height, false);
+      camera.aspect = width / Math.max(height, 1);
+      camera.updateProjectionMatrix();
     };
-    update();
-    return () => cancelAnimationFrame(animId);
-  }, []);
+    const observer = new ResizeObserver(resize);
+    observer.observe(viewport);
+    resize();
 
-  const minX = Math.min(...nodes.map(n => n.x), 50);
-  const maxX = Math.max(...nodes.map(n => n.x), 300);
-  const minY = Math.min(...nodes.map(n => n.y), 40);
-  const maxY = Math.max(...nodes.map(n => n.y), 160);
+    let frame = 0;
+    const animate = () => {
+      frame = requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    };
+    animate();
 
-  const width = Math.max(380, maxX - minX + 100);
-  const height = Math.max(220, maxY - minY + 100);
-  
-  const dx = minX - 40;
-  const dy = minY - 30;
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      controls.dispose();
+      molecule.traverse((object) => {
+        if (object instanceof THREE.Mesh || object instanceof THREE.Sprite) {
+          object.geometry?.dispose();
+          const material = object.material;
+          if (Array.isArray(material)) material.forEach(item => item.dispose());
+          else material.dispose();
+        }
+      });
+      renderer.dispose();
+    };
+  }, [nodes, links, palette, autoRotate]);
 
-  // Modern soft minimal color palette for atoms
-  const getAtomStyle = (label: string) => {
-    switch (label) {
-      case 'C':
-        return { fill: 'bg-neutral-900 text-white dark:bg-white dark:text-black', colorCode: '#171717', darkColorCode: '#ffffff' };
-      case 'H':
-        return { fill: 'bg-neutral-100 text-neutral-800 dark:bg-neutral-900 dark:text-neutral-200', colorCode: '#f5f5f5', darkColorCode: '#171717' };
-      case 'O':
-        return { fill: 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400', colorCode: '#fecaca', darkColorCode: '#7f1d1d' };
-      case 'N':
-        return { fill: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400', colorCode: '#bfdbfe', darkColorCode: '#1e3a8a' };
-      case 'F':
-        return { fill: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400', colorCode: '#a7f3d0', darkColorCode: '#064e3b' };
-      case 'Cl':
-        return { fill: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400', colorCode: '#fde68a', darkColorCode: '#78350f' };
-      default:
-        return { fill: 'bg-neutral-50 text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400', colorCode: '#f5f5f5', darkColorCode: '#262626' };
-    }
-  };
+  const elementSymbols = [...new Set(nodes.map(node => node.label))];
+  const atomCount = nodes.length;
+  const bondCount = links.length;
 
   return (
-    <div className="bg-white dark:bg-black/40 border border-black/5 dark:border-white/10 rounded-xl p-8 shadow-[0_4px_30px_rgba(0,0,0,0.02)] relative flex flex-col justify-between overflow-hidden">
-      {/* Background elegant grid line */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000003_1px,transparent_1px),linear-gradient(to_bottom,#00000003_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none" />
-
-      {/* Card Header */}
-      <div className="relative z-10 flex items-center justify-between border-b border-black/5 dark:border-white/10 pb-4 mb-6">
-        <span className="font-sans font-light text-xs text-black/60 dark:text-white/60 tracking-[0.15em] uppercase">
-          Enlaces de Polimerización (2D)
-        </span>
-        <div className="text-[10px] uppercase tracking-wider text-black/40 dark:text-white/40 font-mono">
-          {materialName ? 'Estructura Macromolecular' : 'Boceto vacío'}
+    <div className="relative overflow-hidden rounded-xl border border-[#22252a] bg-[#0c0d10] p-5 text-[#b0b5be] shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+      <div className="pointer-events-none absolute inset-0 opacity-70 [background-image:linear-gradient(to_right,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.025)_1px,transparent_1px)] [background-size:24px_24px]" />
+      <div className="relative z-10 mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#22252a] pb-3">
+        <div className="flex flex-wrap items-baseline gap-3">
+          <span className="font-display text-sm uppercase tracking-[0.16em] text-[#c8cdd6]">Enlaces de Polimerización (3D)</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#5e6470]">Validador de Valencia</span>
+        </div>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setPalette(value => value === 'ui' ? 'cpk' : 'ui')} className="rounded border border-[#2b2f38] bg-[#15181f] px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#c8cdd6] transition hover:border-[#525a6b]">
+            Paleta: {palette === 'ui' ? 'UI' : 'CPK'}
+          </button>
+          <button type="button" onClick={() => setAutoRotate(value => !value)} className="rounded border border-[#2b2f38] bg-[#15181f] px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#c8cdd6] transition hover:border-[#525a6b]">
+            Auto-Giro: {autoRotate ? 'ON' : 'OFF'}
+          </button>
         </div>
       </div>
 
-      {/* SVG Canvas Area */}
-      <div className="relative z-10 w-full h-[250px] flex items-center justify-center bg-neutral-50/50 dark:bg-neutral-950/20 rounded-lg border border-black/5 dark:border-white/5 p-4 overflow-hidden">
-        {nodes.length === 0 ? (
-          <div className="flex flex-col items-center justify-center text-center max-w-xs text-black/40 dark:text-white/40 font-sans">
-            <span className="text-xs uppercase tracking-widest font-light mb-2">Sin selección</span>
-            <span className="text-[10px] leading-relaxed">
-              Active elementos en la tabla periódica y pulse "Sintetizar Material" para renderizar la estructura del compuesto plástico.
-            </span>
+      <div ref={viewportRef} className="relative z-10 h-[330px] overflow-hidden rounded-lg border border-[#22252a] bg-[radial-gradient(circle_at_center,rgba(25,28,36,0.55),rgba(8,9,12,0.9))]">
+        <canvas ref={canvasRef} className="block h-full w-full cursor-grab active:cursor-grabbing" />
+        <div className="pointer-events-none absolute left-3 top-3 flex max-w-[85%] flex-col gap-1.5">
+          <div className="flex items-center gap-2 rounded-md border border-[#2c313c] bg-[#0c0e12e0] px-2.5 py-1.5 text-xs tracking-wide text-[#e2e6ed] backdrop-blur">
+            <span className="h-2 w-2 rounded-full bg-[#2ea357]" />
+            {materialName ? 'ESTRUCTURA QUÍMICAMENTE VÁLIDA' : 'SIN SELECCIÓN'}
           </div>
-        ) : (
-          <svg
-            viewBox={`${dx} ${dy} ${width} ${height}`}
-            className="w-full h-full max-h-[230px]"
-          >
-            {/* Links / Bonds Rendering */}
-            {links.map((link, idx) => {
-              const sourceNode = nodes.find(n => n.id === link.source);
-              const targetNode = nodes.find(n => n.id === link.target);
-
-              if (!sourceNode || !targetNode) return null;
-
-              // Apply gentle vibration offset to coords
-              const sx = sourceNode.x + (idx % 2 === 0 ? vibrationOffset : -vibrationOffset);
-              const sy = sourceNode.y + (idx % 3 === 0 ? vibrationOffset : -vibrationOffset);
-              const tx = targetNode.x + (idx % 2 === 1 ? vibrationOffset : -vibrationOffset);
-              const ty = targetNode.y + (idx % 3 === 1 ? vibrationOffset : -vibrationOffset);
-
-              if (link.type === 'double') {
-                // Draw two parallel lines for double covalent bonds
-                const dxVal = tx - sx;
-                const dyVal = ty - sy;
-                const len = Math.sqrt(dxVal * dxVal + dyVal * dyVal);
-                const ox = (-dyVal / len) * 2.5; // perpendicular offset
-                const oy = (dxVal / len) * 2.5;
-
-                return (
-                  <g key={`link-${idx}`}>
-                    <line
-                      x1={sx + ox}
-                      y1={sy + oy}
-                      x2={tx + ox}
-                      y2={ty + oy}
-                      className="stroke-neutral-300 dark:stroke-neutral-700"
-                      strokeWidth="1.5"
-                    />
-                    <line
-                      x1={sx - ox}
-                      y1={sy - oy}
-                      x2={tx - ox}
-                      y2={ty - oy}
-                      className="stroke-neutral-300 dark:stroke-neutral-700"
-                      strokeWidth="1.5"
-                    />
-                  </g>
-                );
-              }
-
-              return (
-                <line
-                  key={`link-${idx}`}
-                  x1={sx}
-                  y1={sy}
-                  x2={tx}
-                  y2={ty}
-                  className="stroke-neutral-300 dark:stroke-neutral-700"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              );
-            })}
-
-            {/* Nodes / Atoms Rendering */}
-            {nodes.map((node, idx) => {
-              const nx = node.x + (idx % 2 === 0 ? vibrationOffset : -vibrationOffset);
-              const ny = node.y + (idx % 3 === 0 ? vibrationOffset : -vibrationOffset);
-
-              return (
-                <g key={node.id}>
-                  {/* Background halo */}
-                  <circle
-                    cx={nx}
-                    cy={ny}
-                    r={node.size + 4}
-                    fill="currentColor"
-                    className="text-black/5 dark:text-white/5"
-                  />
-                  
-                  {/* Central Atom Circle */}
-                  <circle
-                    cx={nx}
-                    cy={ny}
-                    r={node.size}
-                    fill={node.color}
-                    className="stroke-neutral-300 dark:stroke-neutral-700"
-                    strokeWidth="1.5"
-                  />
-
-                  {/* Chemical Label */}
-                  <text
-                    x={nx}
-                    y={ny + 0.5}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    className="font-sans font-semibold text-[9px] select-none fill-white"
-                  >
-                    {node.label}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
+          <div className="rounded bg-[#0c0e12bf] px-2 py-1 font-mono text-[10px] text-[#8b92a1]">
+            {formula ? `Fórmula: ${formula} • ` : ''}Átomos: {atomCount} • Enlaces: {bondCount}
+          </div>
+        </div>
+        {!nodes.length && (
+          <div className="absolute inset-0 flex items-center justify-center text-center font-mono text-[10px] uppercase tracking-widest text-[#6c7382]">
+            Selecciona un compuesto para renderizar su geometría 3D
+          </div>
         )}
+        <div className="pointer-events-none absolute bottom-2 left-3 rounded bg-[#0a0b0ecc] px-2 py-1 text-[10px] text-[#6c7382]">
+          Arrastra para orbitar • Rueda para acercar
+        </div>
       </div>
 
-      {/* Mini Legend Footer */}
-      <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 mt-4 text-[9px] font-sans uppercase tracking-wider text-black/40 dark:text-white/40 border-t border-black/5 dark:border-white/10 pt-3">
-        <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-neutral-900 dark:bg-white inline-block border border-black/10 dark:border-white/10" /> Carbono (C)
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-neutral-200 inline-block border border-black/10" /> Hidrógeno (H)
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-red-100 dark:bg-red-950 inline-block border border-red-200 dark:border-red-900" /> Oxígeno (O)
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-blue-100 dark:bg-blue-950 inline-block border border-blue-200 dark:border-blue-900" /> Nitrógeno (N)
-        </span>
+      <div className="relative z-10 mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-[#22252a] pt-3">
+        {elementSymbols.map(symbol => {
+          const style = getStyle(symbol, palette);
+          return (
+            <div key={symbol} className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-[#8a919e]">
+              <span className="h-2.5 w-2.5 rounded-full border" style={{ backgroundColor: style.fill, borderColor: style.ring }} />
+              {symbol}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

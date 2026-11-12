@@ -479,6 +479,7 @@ export default function App() {
                 nodes={selectedCandidate?.molecularStructure?.nodes || []}
                 links={selectedCandidate?.molecularStructure?.links || []}
                 materialName={selectedCandidate?.name || ''}
+                formula={selectedCandidate?.formula || ''}
               />
             </div>
 
