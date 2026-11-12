@@ -237,33 +237,21 @@ export function generateMaterialCombinations(
     const id = `scm-candidate-${index + 1}`;
 
     const uniqueSymbols = symbols;
-    const adjustmentSymbol = symbols.find(sym => getValency(sym) % 2 === 1) || symbols[0];
-
     // --- EXPLORACIÓN ALEATORIA + BACKTRACKING + DEDUPLICACIÓN ---
-    // Probamos varios vectores de subíndices al azar (cada uno pasa por el ajuste
-    // de valencia existente) hasta encontrar uno válido que además no se haya
+    // Probamos varios vectores de subíndices al azar (cada uno pasa por la validación
+    // estricta de valencia) hasta encontrar uno válido que además no se haya
     // mostrado ya en esta sesión. Si tras varios intentos no aparece ninguno nuevo,
     // se descarta esta familia (poda DSP), igual que antes.
     let subscripts: Record<string, number> = {};
     let isValid = false;
     let formula = '';
     let sortedSymbols: string[] = [];
-    const maxOuterAttempts = 15;
+    const maxOuterAttempts = 250;
 
     for (let outer = 0; outer < maxOuterAttempts; outer++) {
       subscripts = buildRandomSubscripts();
 
-      // Ajuste de valencia: si la molécula es inestable, ajustamos los Hidrógenos hasta estabilizarla
-      let attempts = 0;
-      isValid = false;
-      while (!isValid && attempts < 10) {
-        isValid = validarEstequiometria(subscripts);
-        if (!isValid) {
-          if (!adjustmentSymbol) break;
-          subscripts[adjustmentSymbol] += 1;
-          attempts++;
-        }
-      }
+      isValid = validarEstequiometria(subscripts);
 
       if (!isValid) continue;
 
