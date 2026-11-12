@@ -190,11 +190,10 @@ function validarEstequiometria(subscripts: Record<string, number>): boolean {
     .filter(sym => getValency(sym) >= 2 && subscripts[sym] > 0)
     .reduce((sum, sym) => sum + subscripts[sym], 0);
 
-  if (backboneAtoms === 0) return false;
-
-  const maxAvailableSites = backboneSites - 2 * (backboneAtoms - 1);
-  const minAvailableSites = Math.max(0, backboneSites - 4 * (backboneAtoms - 1));
-  if (terminals > maxAvailableSites || terminals < minAvailableSites) return false;
+  if (backboneAtoms > 0) {
+    const maxAvailableSites = backboneSites - 2 * (backboneAtoms - 1);
+    if (terminals > maxAvailableSites) return false;
+  }
 
   return true;
 }
